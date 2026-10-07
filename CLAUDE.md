@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Pre-code. The repo holds only `README.md` and the product spec `docs/SPEC.md` (v0.3, draft). There is no build, lint, or test tooling yet — add the real commands here once the frontend/backend are scaffolded. `docs/SPEC.md` is the source of truth; read it before designing or changing behavior, and update it (version + "Decisions" table in §10) when a decision changes.
+Pre-code. The repo holds only `README.md` and the product spec `docs/SPEC.md` (v0.5, draft). There is no build, lint, or test tooling yet — add the real commands here once the frontend/backend are scaffolded. `docs/SPEC.md` is the source of truth; read it before designing or changing behavior, and update it (version + "Decisions" table in §10) when a decision changes.
 
 ## What is being built
 
@@ -12,9 +12,12 @@ Family Tree Manager: a multi-tenant web app where a **Client** account owns one 
 
 ## Planned stack (spec §8)
 
-- Frontend: React + TypeScript, Tailwind + shadcn/ui, Framer Motion. 2D views with D3 / React Flow; 3D/4D views with Three.js via `@react-three/fiber` + `@react-three/drei`.
-- Backend: Node.js REST API. **Framework not yet chosen** (client will pick NestJS / Express / Fastify) — don't assume one.
-- PostgreSQL (recursive CTEs for ancestor/descendant queries), S3-compatible storage in the same region, JWT auth + role guard, i18next for i18n, Docker deploy.
+Stack and package versions mirror the Syvona project at `/Users/mmj/Work/My/h5care/syvona/syvona` (spec decision #7). When adding a package, use the version Syvona pins in its `package.json` files.
+
+- Monorepo: pnpm workspaces (`apps/api`, `apps/web`, `packages/ui`, `packages/shared`), Node 24, pnpm 10, TypeScript 5.9 strict, Biome, Lefthook.
+- Frontend: React 19 + Vite 8, TanStack Router / Query / Form / Table, Zustand, Tailwind 4 + shadcn/ui in `packages/ui`, `openapi-fetch` with types generated from the API's `/doc`. Additions beyond Syvona: Framer Motion, i18next, D3 / React Flow for 2D views, Three.js via `@react-three/fiber` + `@react-three/drei` for 3D/4D views.
+- Backend: Hono on `@hono/node-server`, routes via `@hono/zod-openapi` + Zod 4 (the `/doc` OpenAPI endpoint is the contract), Prisma 7 with `@prisma/adapter-pg`, pino, pg-boss, Vitest.
+- PostgreSQL 16 (recursive CTEs for ancestor/descendant queries), S3-compatible storage in the same region, server-side sessions stored in Postgres (like Syvona, not JWT) + role guard, Docker deploy.
 
 ## Cross-cutting rules that shape the architecture
 
@@ -32,4 +35,4 @@ These span auth, data access and UI, so they must hold everywhere:
 
 ## Open questions (spec §10)
 
-Backend framework, whether Hijri dates ship at launch, and the default tree direction in Arabic are undecided — ask rather than pick.
+Whether Hijri dates ship at launch, and the default tree direction in Arabic are undecided — ask rather than pick.

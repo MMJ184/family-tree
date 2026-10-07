@@ -1,13 +1,13 @@
-# Family Tree Manager — Product Spec v0.4
+# Family Tree Manager — Product Spec v0.5
 
 | | |
 |---|---|
 | Status | Draft |
 | Owner | MMJ |
-| Date | 2026-10-06 |
+| Date | 2026-10-07 |
 | Platform | Web app (desktop + mobile browser) |
 | Frontend | React (high-end UI, 3D / 4D tree views) |
-| Backend | Node.js (framework to be confirmed) |
+| Backend | Node.js + Hono (same stack as the Syvona project) |
 | Languages | English + Arabic (Arabic is client's primary) — full RTL |
 | Hosting | Cloud, Middle East region |
 
@@ -199,14 +199,18 @@ Constraints:
 - Hosted in a **Middle East cloud region** (e.g. AWS me-central-1 UAE / Azure UAE North) for latency and data residency; deployed with Docker.
 
 ## 8. Tech Stack
-- **Frontend (decided):** React + TypeScript, Tailwind + component library (e.g. shadcn/ui), Framer Motion for animation.
+Base stack and package versions mirror the Syvona project (`h5care/syvona`) so both codebases share tooling and conventions.
+
+- **Monorepo:** pnpm workspaces (`apps/api`, `apps/web`, `packages/ui`, `packages/shared`), Node 24, pnpm 10, TypeScript 5.9 (strict), Biome for lint/format, Lefthook git hooks.
+- **Frontend (decided):** React 19 + TypeScript on Vite 8; TanStack Router, TanStack Query, TanStack Form, TanStack Table; Zustand for client state; Tailwind 4 + shadcn/ui (Radix, cmdk, lucide-react) in a shared `packages/ui`; `openapi-fetch` with types generated from the API's OpenAPI doc (`openapi-typescript`); sonner toasts; date-fns; ECharts for charts. Tests: Vitest + Testing Library, Playwright for E2E.
+  - Additions this product needs beyond the Syvona set: Framer Motion for animation; i18next for i18n.
   - 2D views: D3 / React Flow.
   - 3D / 4D views: Three.js via `@react-three/fiber` + `@react-three/drei`; time slider drives the 4D playback.
-- **Backend (decided: Node.js):** framework to be provided by client (NestJS / Express / Fastify) — REST API.
-- **DB:** PostgreSQL (recursive CTEs for ancestors/descendants).
+- **Backend (decided):** Node.js + Hono (`@hono/node-server`), routes defined with `@hono/zod-openapi` and Zod 4 — the `/doc` OpenAPI endpoint is the API contract; Swagger UI; pino logging; pg-boss for background jobs; `hono-rate-limiter`; ULID ids. Tests: Vitest. Run in dev with `tsx watch`.
+- **DB:** PostgreSQL 16 via Prisma 7 (`@prisma/adapter-pg`); raw SQL recursive CTEs for ancestors/descendants. Local Postgres via docker-compose.
 - **Storage:** S3-compatible for photos (same region).
 - **i18n:** i18next + Tailwind RTL utilities (`rtl:` / logical properties).
-- **Auth:** JWT sessions + role guard.
+- **Auth:** server-side sessions stored in PostgreSQL (same approach as Syvona, not JWT) + role guard.
 
 ## 9. Out of Scope for v1
 DNA integration, public search across families, payments, native mobile apps, GEDCOM.
@@ -222,11 +226,12 @@ DNA integration, public search across families, payments, native mobile apps, GE
 | 4 | Hosting | Cloud, Middle East region |
 | 5 | Viewer role in v1 | Yes |
 | 6 | Business contact visibility | Visible to Viewers of same family; GST/registration admin-only |
+| 7 | Backend framework and package set (2026-10-07) | Same backend and frontend stack and packages as the Syvona project: Hono + Prisma API, Vite + TanStack React web, pnpm monorepo |
+| 8 | Auth sessions (2026-10-07) | Server-side sessions stored in PostgreSQL, as in Syvona — replaces JWT |
 
 **Still open**
-1. Backend Node framework — to be provided by client.
-2. Hijri date display — needed at launch or later?
-3. Default tree direction in Arabic (right-to-left horizontal vs. top-down)?
+1. Hijri date display — needed at launch or later?
+2. Default tree direction in Arabic (right-to-left horizontal vs. top-down)?
 
 ## 11. Success Criteria (v1)
 - Super Admin can create 2 families and they are fully isolated.
