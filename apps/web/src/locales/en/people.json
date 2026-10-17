@@ -1,0 +1,224 @@
+{
+  "actions": {
+    "addPerson": "Add person",
+    "addRelative": "Add relative",
+    "openProfile": "Open profile",
+    "viewInTree": "View in tree",
+    "personView": "Person view",
+    "removeFromFamily": "Remove from family"
+  },
+  "fields": {
+    "firstName": "First name",
+    "middleName": "Middle name",
+    "lastName": "Last name / surname",
+    "maidenName": "Maiden name",
+    "nameAr": "Full name in Arabic",
+    "nameEn": "Full name in English",
+    "fatherName": "Father's name",
+    "grandfatherName": "Grandfather's name",
+    "tribeName": "Tribe / family name",
+    "kunya": "Kunya",
+    "laqab": "Laqab (title)",
+    "gender": "Gender",
+    "birth": "Date of birth",
+    "death": "Date of death",
+    "isLiving": "Living",
+    "birthPlace": "Birth place",
+    "currentCity": "Current city",
+    "photo": "Photo",
+    "phone": "Phone",
+    "email": "Email",
+    "occupation": "Occupation",
+    "education": "Education",
+    "notes": "Notes / biography",
+    "marriedIntoNote": "Married into",
+    "photoUrl": "Photo"
+  },
+  "form": {
+    "createTitle": "Add a person",
+    "editTitle": "Edit person",
+    "subtitle": "Fill in what you know. Only the first name is required.",
+    "sections": {
+      "names": "Names",
+      "nasab": "Lineage & identity",
+      "dates": "Life dates",
+      "places": "Places",
+      "contact": "Contact",
+      "work": "Work & education",
+      "notes": "Biography & notes",
+      "custom": "Custom fields"
+    },
+    "precision": "Date precision",
+    "precisions": {
+      "YEAR": "Year only",
+      "MONTH": "Month & year",
+      "DAY": "Full date"
+    },
+    "year": "Year",
+    "month": "Month",
+    "day": "Day",
+    "approx": "Approximate",
+    "livingLocked": "Set to deceased because a date of death is given.",
+    "kunyaHint": "e.g. Abu Khalid",
+    "contactHint": "Hidden from Viewers.",
+    "marriedIntoHint": "For a family that is not on this account, e.g. “Married into the Al Dhaheri family of Dubai”.",
+    "customEmpty": "No custom fields yet. Add any detail, e.g. community or clan branch.",
+    "customKey": "Field",
+    "customValue": "Value",
+    "customAdd": "Add field",
+    "photoUpload": "Upload photo",
+    "photoChange": "Change photo",
+    "photoRemove": "Remove",
+    "photoHint": "Cropped to a square and resized to 256 px.",
+    "photoError": "This file could not be read as an image.",
+    "errors": {
+      "required": "Required.",
+      "email": "Enter a valid email address.",
+      "year": "Enter a valid year.",
+      "month": "Choose a month.",
+      "day": "Enter a valid day for this month.",
+      "deathBeforeBirth": "The date of death is before the date of birth.",
+      "endBeforeStart": "The end year is before the start year.",
+      "deathRequiresNotLiving": "A person with a date of death cannot be living."
+    }
+  },
+  "relative": {
+    "title": "Add a relative",
+    "subtitle": "Create a new person or link someone who is already recorded.",
+    "relativeOf": "Adding a relative of",
+    "relation": "Relation",
+    "source": "Person",
+    "newPerson": "New person",
+    "existingPerson": "Existing person",
+    "searchPeople": "Search by name or birth year",
+    "spouseFromFamilies": "You can pick someone from any family you manage. They will appear in both family trees as one person.",
+    "parentRole": "Father or mother",
+    "birthYear": "Birth year",
+    "deathYear": "Death year",
+    "marriedIntoHint": "Optional: their family, if it is not on this account.",
+    "parentChildType": "Parent–child link",
+    "otherParent": "Other parent",
+    "noOtherParent": "Not recorded",
+    "marryParent": "Married to {{name}}",
+    "siblingNeedsParents": "To add a sibling, first add a parent.",
+    "pickSomeone": "Choose a person from the list.",
+    "nameRequired": "Enter a name in Arabic or English.",
+    "add": "Add {{relation}}"
+  },
+  "relations": {
+    "parent": "Parent",
+    "child": "Child",
+    "spouse": "Spouse",
+    "sibling": "Sibling",
+    "father": "Father",
+    "mother": "Mother"
+  },
+  "parentChildType": {
+    "BIOLOGICAL": "Biological",
+    "ADOPTED": "Adopted",
+    "STEP": "Step"
+  },
+  "marriage": {
+    "status": "Marriage status",
+    "statuses": {
+      "MARRIED": "Married",
+      "DIVORCED": "Divorced",
+      "WIDOWED": "Widowed"
+    },
+    "startYear": "Marriage year",
+    "endYear": "End year",
+    "edit": "Edit marriage",
+    "editTitle": "Marriage with {{name}}"
+  },
+  "membership": {
+    "BORN": "Born in family",
+    "MARRIED_IN": "Married in"
+  },
+  "businessRole": {
+    "OWNER": "Owner",
+    "CO_FOUNDER": "Co-founder",
+    "PARTNER": "Partner",
+    "DIRECTOR": "Director",
+    "MANAGER": "Manager"
+  },
+  "family": {
+    "parents": "Parents",
+    "spouses": "Spouses",
+    "siblings": "Siblings",
+    "children": "Children",
+    "noParents": "No parents recorded",
+    "noSpouses": "No spouse recorded",
+    "noSiblings": "No siblings",
+    "noChildren": "No children recorded",
+    "siblingsDerived": "Worked out from shared parents"
+  },
+  "profile": {
+    "bin": "bin",
+    "bint": "bint",
+    "tribe": "Tribe: {{name}}",
+    "facts": "Details",
+    "family": "Family",
+    "biography": "Biography",
+    "businesses": "Businesses",
+    "appearsIn": "Appears in families",
+    "contactsHidden": "Personal phone and email are visible to family admins only."
+  },
+  "list": {
+    "title": "People",
+    "subtitle": "{{count}} people in {{family}}",
+    "searchPlaceholder": "Search by name, city or birth year…",
+    "viewMode": "Display",
+    "views": {
+      "table": "Table",
+      "cards": "Cards"
+    },
+    "filters": {
+      "all": "All",
+      "generation": "Generation",
+      "status": "Status",
+      "gender": "Gender",
+      "city": "City",
+      "membership": "Membership"
+    },
+    "generationN": "Generation {{n}}",
+    "columns": {
+      "name": "Name",
+      "years": "Years",
+      "generation": "Gen.",
+      "status": "Status",
+      "city": "City",
+      "membership": "Membership",
+      "actions": "Actions"
+    },
+    "showing": "{{shown}} of {{total}}",
+    "showMore": "Show more ({{count}} left)",
+    "noResults": "No one matches these filters.",
+    "clearFilters": "Clear filters",
+    "exportCsv": "Export CSV"
+  },
+  "csv": {
+    "nameAr": "Name (Arabic)",
+    "nameEn": "Name (English)",
+    "fileName": "{{family}}-people-{{date}}",
+    "familyFallback": "family"
+  },
+  "confirm": {
+    "deleteTitle": "Delete {{name}}?",
+    "deleteBody": "They will be removed from the family tree. Their relationships are kept in case the record is restored.",
+    "unlinkTitle": "Remove this parent–child link?",
+    "unlinkBody": "{{a}} and {{b}} will no longer be linked as parent and child. Neither person is deleted.",
+    "unmarryTitle": "Remove this marriage?",
+    "unmarryBody": "The marriage between {{a}} and {{b}} will be removed. Neither person is deleted.",
+    "removeTitle": "Remove {{name}} from this family?",
+    "removeBody": "They married into this family. They will be removed from this family tree, together with links that exist only here. Their own record is not deleted."
+  },
+  "toast": {
+    "created": "{{name}} added",
+    "updated": "{{name}} saved",
+    "deleted": "{{name}} deleted",
+    "relativeAdded": "{{name}} added as {{relation}}",
+    "marriageUpdated": "Marriage updated",
+    "unlinked": "Link removed",
+    "removed": "{{name}} removed from this family"
+  }
+}

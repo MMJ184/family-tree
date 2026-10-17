@@ -1,0 +1,19 @@
+# Local git hooks, installed by the root `prepare` script on `pnpm install`.
+
+pre-commit:
+  parallel: true
+  commands:
+    biome-format:
+      glob: '*.{js,jsx,mjs,cjs,ts,tsx,json,jsonc,css,html}'
+      exclude:
+        - 'docs/prototypes/**'
+      run: pnpm exec biome format --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+
+pre-push:
+  parallel: true
+  commands:
+    typecheck:
+      run: pnpm typecheck
+
+# Skip hooks with: LEFTHOOK=0 git commit ...   (use sparingly)

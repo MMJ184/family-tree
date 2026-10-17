@@ -1,0 +1,56 @@
+{
+  "title": "All families",
+  "subtitle": "Every family on {{client}}. Only Super Admins see this list.",
+  "new": "New family",
+  "stats": {
+    "people": "People",
+    "businesses": "Businesses",
+    "admins": "Admins"
+  },
+  "noAdmins": "No admin yet",
+  "moreAdmins": "+{{count}}",
+  "nativePlace": "From {{place}}",
+  "open": "Open family",
+  "menu": "Family actions for {{name}}",
+  "edit": "Edit details",
+  "editFamily": "Edit family",
+  "archive": "Archive",
+  "restore": "Restore",
+  "archivedTitle": "Archived families",
+  "archivedHint": "Hidden from their admins and viewers. Nothing was deleted.",
+  "archivedOn": "Archived {{date}}",
+  "empty": "No families yet. Create the first one to start a tree.",
+  "archiveConfirmTitle": "Archive {{name}}?",
+  "archiveConfirmBody": "Its admins and viewers lose access and it disappears from their lists. People, relationships and businesses are kept, and you can restore it at any time.",
+  "toast": {
+    "created": "{{name}} created",
+    "updated": "Changes saved",
+    "archived": "{{name}} archived",
+    "restored": "{{name}} restored"
+  },
+  "form": {
+    "createTitle": "Create a family",
+    "createBody": "Give the family a name in both languages. You can invite its admin next.",
+    "editTitle": "Edit family",
+    "editBody": "Changes show for everyone with access to this family.",
+    "name": "Name (English)",
+    "namePlaceholder": "Al Hashimi Family",
+    "nameAr": "Name (Arabic)",
+    "nameArPlaceholder": "عائلة الهاشمي",
+    "surname": "Surname",
+    "surnamePlaceholder": "Al Hashimi",
+    "nativePlace": "Native place",
+    "nativePlacePlaceholder": "Al Ain",
+    "description": "Description",
+    "descriptionPlaceholder": "Where the family comes from, what it is known for…",
+    "color": "Colour",
+    "colorOption": "Colour {{n}}",
+    "required": "Required",
+    "create": "Create family"
+  },
+  "noFamily": {
+    "title": "No family yet",
+    "body": "Your account is not linked to a family tree yet. Ask your family's administrator to invite you, then sign in again.",
+    "switchUser": "Switch demo user"
+  }
+}

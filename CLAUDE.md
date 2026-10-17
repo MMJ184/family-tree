@@ -4,7 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Pre-code. The repo holds only `README.md` and the product spec `docs/SPEC.md` (v0.5, draft). There is no build, lint, or test tooling yet — add the real commands here once the frontend/backend are scaffolded. `docs/SPEC.md` is the source of truth; read it before designing or changing behavior, and update it (version + "Decisions" table in §10) when a decision changes.
+Client-demo phase (spec decision #9): the web app is built with **no backend**. `apps/web` calls a mock API that runs in the browser; `apps/api` does not exist yet. `docs/SPEC.md` (v0.6) is the source of truth; read it before designing or changing behavior, and update it (version + "Decisions" table in §10) when a decision changes. `docs/DEMO-BRIEF.md` describes how the demo code is organised and the rules each change must follow.
+
+## Commands
+
+Run from the repo root (Node 24, pnpm 10):
+
+- `pnpm install` — install; also installs Lefthook git hooks.
+- `pnpm dev` — web app at http://127.0.0.1:3100 (port 3001 is Syvona's).
+- `pnpm lint` / `pnpm lint:fix` — Biome.
+- `pnpm typecheck`, `pnpm test` (Vitest: `packages/shared` helpers, `apps/web` access-isolation tests), `pnpm build`.
+- Single test file: `pnpm --filter @family-tree/web exec vitest run src/mock/access.test.ts`.
+- `docker build -t family-tree-demo . && docker run -p 8080:80 family-tree-demo` — static demo served by nginx (`deploy/nginx.conf`).
+
+## Demo architecture
+
+- `apps/web/src/mock/` — in-memory tables seeded with sample families (`seed.ts`), saved to localStorage; `guard.ts` holds the access rules the real API must also enforce.
+- `apps/web/src/api/` — async service functions shaped like REST endpoints; the only code that touches `mock/`. The real Hono API will replace these behind the same signatures.
+- `apps/web/src/entities/` (query hooks) → `features/` (UI per area) → `routes/` (TanStack file routes). Biome enforces this import direction.
+- Translations: `apps/web/src/locales/{en,ar}/<namespace>.json`, one namespace per feature, same keys in both.
 
 ## What is being built
 

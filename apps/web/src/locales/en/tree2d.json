@@ -1,0 +1,72 @@
+{
+  "controls": {
+    "focus": "Centre on the selected person",
+    "fit": "Show the whole tree",
+    "expandAll": "Expand all branches",
+    "collapse": "Collapse this branch",
+    "expand": "Expand this branch",
+    "hiddenCount": "+{{count}}",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "panel": "Tree controls",
+    "minimap": "Overview map",
+    "nodeHint": "Press Enter to open this person's details."
+  },
+  "badges": {
+    "business": "Linked to a business",
+    "marriedIn": "Married into the family",
+    "deceased": "Deceased"
+  },
+  "marriedYear": "Married {{year}}",
+  "arranging": "Arranging the tree…",
+  "emptyYear": "No one in this family was born by {{year}}.",
+  "empty": "No people in this family yet.",
+  "rel": {
+    "father": "Father",
+    "mother": "Mother",
+    "parent": "Parent",
+    "husband": "Husband",
+    "wife": "Wife",
+    "spouse": "Spouse",
+    "exHusband": "Former husband",
+    "exWife": "Former wife",
+    "exSpouse": "Former spouse",
+    "lateHusband": "Late husband",
+    "lateWife": "Late wife",
+    "brother": "Brother",
+    "sister": "Sister",
+    "sibling": "Sibling",
+    "halfBrother": "Half brother",
+    "halfSister": "Half sister",
+    "halfSibling": "Half sibling",
+    "son": "Son",
+    "daughter": "Daughter",
+    "child": "Child"
+  },
+  "sections": {
+    "parents": "Parents",
+    "spouses": "Spouses",
+    "siblings": "Siblings",
+    "children": "Children"
+  },
+  "person": {
+    "defaultHint": "Showing {{name}}, the earliest member of the family. Search for anyone, or click a card to centre on them.",
+    "noParents": "No parents recorded",
+    "noSpouses": "No spouse recorded",
+    "noSiblings": "No siblings",
+    "noChildren": "No children recorded",
+    "openProfile": "Open profile",
+    "occupation": "Occupation",
+    "city": "City",
+    "businesses": "Businesses",
+    "notBornYet": "{{name}} was born after {{year}}. Move the year slider forward to see them."
+  },
+  "generation": {
+    "title": "Generation {{n}}",
+    "count_one": "{{count}} person",
+    "count_other": "{{count}} people",
+    "span": "Born <y>{{from}}–{{to}}</y>",
+    "total_one": "{{count}} person in {{gens}} generations",
+    "total_other": "{{count}} people in {{gens}} generations"
+  }
+}

@@ -1,0 +1,244 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Noto+Kufi+Arabic:wght@500;700&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@source "../../../packages/ui";
+
+/* `dark:` follows the app's theme toggle (data-theme on :root) and, in auto
+   mode, the OS setting. The two arms mirror the token rules below. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
+@theme inline {
+  --color-background: var(--ft-background);
+  --color-foreground: var(--ft-foreground);
+  --color-card: var(--ft-card);
+  --color-card-foreground: var(--ft-card-foreground);
+  --color-popover: var(--ft-popover);
+  --color-popover-foreground: var(--ft-popover-foreground);
+  --color-primary: var(--ft-primary);
+  --color-primary-foreground: var(--ft-primary-foreground);
+  --color-secondary: var(--ft-secondary);
+  --color-secondary-foreground: var(--ft-secondary-foreground);
+  --color-muted: var(--ft-muted);
+  --color-muted-foreground: var(--ft-muted-foreground);
+  --color-accent: var(--ft-accent);
+  --color-accent-foreground: var(--ft-accent-foreground);
+  --color-gold: var(--ft-gold);
+  --color-gold-foreground: var(--ft-gold-foreground);
+  --color-destructive: var(--ft-destructive);
+  --color-destructive-text: var(--ft-destructive-text);
+  --color-destructive-border: var(--ft-destructive-border);
+  --color-success: var(--ft-success);
+  --color-success-text: var(--ft-success-text);
+  --color-warning: var(--ft-warning);
+  --color-warning-text: var(--ft-warning-text);
+  --color-info: var(--ft-info);
+  --color-info-text: var(--ft-info-text);
+  --color-border: var(--ft-border);
+  --color-input: var(--ft-input);
+  --color-ring: var(--ft-ring);
+  --color-male: var(--ft-male);
+  --color-female: var(--ft-female);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@theme {
+  /* Latin text uses Manrope; Arabic characters fall through to IBM Plex Sans Arabic. */
+  --font-sans: "Manrope", "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", "Noto Kufi Arabic", Georgia, serif;
+}
+
+:root {
+  --sidebar-width: 248px;
+  --topbar-height: 60px;
+  --radius: 0.75rem;
+
+  /* Light: warm sand paper with deep teal and pearl gold. */
+  --ft-background: #f6f3ee;
+  --ft-foreground: #14201f;
+  --ft-card: #ffffff;
+  --ft-card-foreground: #14201f;
+  --ft-popover: #ffffff;
+  --ft-popover-foreground: #14201f;
+  --ft-primary: #0f6b63;
+  --ft-primary-foreground: #ffffff;
+  --ft-secondary: #ece7df;
+  --ft-secondary-foreground: #14201f;
+  --ft-muted: #ece7df;
+  --ft-muted-foreground: #5d6664;
+  --ft-accent: #e8f2ef;
+  --ft-accent-foreground: #0b4f49;
+  --ft-gold: #b7862c;
+  --ft-gold-foreground: #ffffff;
+  --ft-destructive: oklch(0.51 0.237 25.3);
+  --ft-destructive-text: oklch(0.51 0.237 25.3);
+  --ft-destructive-border: oklch(0.51 0.237 25.3);
+  --ft-success: oklch(0.696 0.17 162.48);
+  --ft-success-text: oklch(0.508 0.118 165.612);
+  --ft-warning: oklch(0.769 0.188 70.08);
+  --ft-warning-text: oklch(0.536 0.179 58.318);
+  --ft-info: oklch(0.623 0.214 259.815);
+  --ft-info-text: oklch(0.53 0.245 262.881);
+  --ft-border: rgba(20, 32, 31, 0.1);
+  --ft-input: #858c89;
+  --ft-ring: #0f6b63;
+  --ft-male: #2f7fb8;
+  --ft-female: #c2577e;
+  --ft-glass: rgba(255, 255, 255, 0.72);
+  --ft-canvas: radial-gradient(1200px 600px at 80% -10%, #e4efe9 0%, transparent 60%), #f6f3ee;
+}
+
+:root[data-theme="dark"] {
+  --ft-background: #0b1214;
+  --ft-foreground: #eef3f1;
+  --ft-card: #131c1f;
+  --ft-card-foreground: #eef3f1;
+  --ft-popover: #1a2528;
+  --ft-popover-foreground: #eef3f1;
+  --ft-primary: #4fd1bd;
+  --ft-primary-foreground: #06201c;
+  --ft-secondary: #1c282b;
+  --ft-secondary-foreground: #eef3f1;
+  --ft-muted: #1c282b;
+  --ft-muted-foreground: #9fb0ac;
+  --ft-accent: #17302d;
+  --ft-accent-foreground: #b9efe4;
+  --ft-gold: #e2b65a;
+  --ft-gold-foreground: #1c1405;
+  --ft-destructive: oklch(0.51 0.237 25.3);
+  --ft-destructive-text: oklch(0.722 0.237 25.3);
+  --ft-destructive-border: oklch(0.722 0.237 25.3);
+  --ft-success: oklch(0.696 0.17 162.48);
+  --ft-success-text: oklch(0.765 0.177 163.223);
+  --ft-warning: oklch(0.769 0.188 70.08);
+  --ft-warning-text: oklch(0.828 0.189 84.429);
+  --ft-info: oklch(0.623 0.214 259.815);
+  --ft-info-text: oklch(0.707 0.165 254.624);
+  --ft-border: rgba(255, 255, 255, 0.09);
+  --ft-input: #6f7c79;
+  --ft-ring: #4fd1bd;
+  --ft-male: #6cb4ec;
+  --ft-female: #f08bb0;
+  --ft-glass: rgba(19, 28, 31, 0.72);
+  --ft-canvas: radial-gradient(1200px 600px at 80% -10%, #12302c 0%, transparent 60%), #0b1214;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ft-background: #0b1214;
+    --ft-foreground: #eef3f1;
+    --ft-card: #131c1f;
+    --ft-card-foreground: #eef3f1;
+    --ft-popover: #1a2528;
+    --ft-popover-foreground: #eef3f1;
+    --ft-primary: #4fd1bd;
+    --ft-primary-foreground: #06201c;
+    --ft-secondary: #1c282b;
+    --ft-secondary-foreground: #eef3f1;
+    --ft-muted: #1c282b;
+    --ft-muted-foreground: #9fb0ac;
+    --ft-accent: #17302d;
+    --ft-accent-foreground: #b9efe4;
+    --ft-gold: #e2b65a;
+    --ft-gold-foreground: #1c1405;
+    --ft-destructive: oklch(0.51 0.237 25.3);
+    --ft-destructive-text: oklch(0.722 0.237 25.3);
+    --ft-destructive-border: oklch(0.722 0.237 25.3);
+    --ft-success: oklch(0.696 0.17 162.48);
+    --ft-success-text: oklch(0.765 0.177 163.223);
+    --ft-warning: oklch(0.769 0.188 70.08);
+    --ft-warning-text: oklch(0.828 0.189 84.429);
+    --ft-info: oklch(0.623 0.214 259.815);
+    --ft-info-text: oklch(0.707 0.165 254.624);
+    --ft-border: rgba(255, 255, 255, 0.09);
+    --ft-input: #6f7c79;
+    --ft-ring: #4fd1bd;
+    --ft-male: #6cb4ec;
+    --ft-female: #f08bb0;
+    --ft-glass: rgba(19, 28, 31, 0.72);
+    --ft-canvas: radial-gradient(1200px 600px at 80% -10%, #12302c 0%, transparent 60%), #0b1214;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* biome-ignore-start lint/complexity/noImportantStyles: the OS reduced-motion request must beat every animation utility. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* biome-ignore-end lint/complexity/noImportantStyles: see above */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--ft-canvas);
+  background-attachment: fixed;
+  color: var(--ft-foreground);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Arabic reads better a little larger and with more line height. */
+:root[lang="ar"] body {
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+@layer base {
+  button:not(:disabled):not([aria-disabled="true"]),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled),
+  label[for] {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  /* Frosted panel used for floating toolbars and side panels over the tree canvases. */
+  .glass {
+    background: var(--ft-glass);
+    backdrop-filter: blur(14px) saturate(1.3);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    border: 1px solid var(--ft-border);
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+/* Year ranges and numbers keep their own order inside Arabic text ("1905–1978"). */
+.ltr-isolate {
+  direction: ltr;
+  unicode-bidi: isolate;
+}

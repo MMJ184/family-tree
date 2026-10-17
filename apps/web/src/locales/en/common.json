@@ -1,0 +1,89 @@
+{
+  "appName": "Family Tree",
+  "nav": {
+    "overview": "Overview",
+    "tree": "Family tree",
+    "people": "People",
+    "businesses": "Businesses",
+    "members": "Access",
+    "allFamilies": "All families",
+    "family": "Family",
+    "switchFamily": "Switch family",
+    "openMenu": "Open menu"
+  },
+  "roles": {
+    "SUPER_ADMIN": "Super Admin",
+    "ADMIN": "Family Admin",
+    "VIEWER": "Viewer"
+  },
+  "topbar": {
+    "language": "Language",
+    "english": "English",
+    "arabic": "العربية",
+    "theme": "Theme",
+    "themeAuto": "System",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "account": "Account",
+    "signOut": "Sign out",
+    "switchUser": "Switch demo user",
+    "resetDemo": "Reset demo data",
+    "resetDone": "Demo data restored",
+    "resetConfirmTitle": "Reset demo data?",
+    "resetConfirmBody": "All changes made in this browser are replaced with the original sample families.",
+    "demoBadge": "Demo"
+  },
+  "actions": {
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "close": "Close",
+    "back": "Back",
+    "search": "Search",
+    "confirm": "Confirm",
+    "remove": "Remove",
+    "open": "Open",
+    "retry": "Try again",
+    "viewAll": "View all"
+  },
+  "states": {
+    "loading": "Loading…",
+    "empty": "Nothing here yet",
+    "error": "Something went wrong",
+    "notFound": "Not found",
+    "notFoundBody": "This page does not exist or you do not have access to it.",
+    "readOnly": "View only"
+  },
+  "errors": {
+    "UNAUTHENTICATED": "Please sign in again.",
+    "NOT_FOUND": "Not found, or you do not have access.",
+    "FORBIDDEN": "You do not have permission to do this.",
+    "VALIDATION": "Please check the highlighted fields.",
+    "CONFLICT": "This change conflicts with existing data.",
+    "CYCLE": "This link would make a person their own ancestor.",
+    "TOO_MANY_PARENTS": "A person can have at most two biological parents."
+  },
+  "gender": {
+    "MALE": "Male",
+    "FEMALE": "Female",
+    "OTHER": "Other"
+  },
+  "dates": {
+    "approx": "c.",
+    "born": "Born",
+    "died": "Died",
+    "living": "Living",
+    "deceased": "Deceased",
+    "age": "Age {{age}}"
+  },
+  "time": {
+    "year": "Year",
+    "today": "Today",
+    "play": "Play",
+    "pause": "Pause",
+    "showingYear": "The family in {{year}}"
+  }
+}

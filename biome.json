@@ -1,0 +1,107 @@
+{
+  "$schema": "https://biomejs.dev/schemas/latest/schema.json",
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**",
+      "!node_modules",
+      "!**/dist",
+      "!**/coverage",
+      "!**/.vite",
+      "!**/.tanstack",
+      "!apps/web/src/routeTree.gen.ts",
+      "!docs/prototypes",
+      "!**/test-results",
+      "!**/playwright-report"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "all",
+      "bracketSpacing": true,
+      "arrowParentheses": "always"
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/web/src/lib/**", "apps/web/src/components/**", "apps/web/src/hooks/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["#/entities/**", "#/features/**", "#/routes/**"],
+                    "message": "Shared layer (lib, components, hooks) must not import from entities/, features/, or routes/. Imports flow shared \u2192 entities \u2192 features \u2192 routes; if shared code needs domain knowledge, the design is wrong \u2014 pull it down or move the consumer up."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/entities/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["#/features/**", "#/routes/**"],
+                    "message": "entities/ must not import from features/ or routes/. Entities expose domain types and shared queries; orchestration belongs in features."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/features/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["#/features/**", "#/routes/**"],
+                    "message": "features/ must not import from other features/ or from routes/. Use relative imports (./..) for files within the same feature; for shared cross-feature code, pull it up to entities/ or shared (lib/, components/shared/, hooks/)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

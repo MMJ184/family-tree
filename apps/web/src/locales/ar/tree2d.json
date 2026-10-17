@@ -1,0 +1,80 @@
+{
+  "controls": {
+    "focus": "التمركز على الشخص المحدد",
+    "fit": "عرض الشجرة كاملة",
+    "expandAll": "توسيع كل الفروع",
+    "collapse": "طي هذا الفرع",
+    "expand": "توسيع هذا الفرع",
+    "hiddenCount": "+{{count}}",
+    "zoomIn": "تكبير",
+    "zoomOut": "تصغير",
+    "panel": "أدوات الشجرة",
+    "minimap": "خريطة مصغرة",
+    "nodeHint": "اضغط Enter لفتح تفاصيل هذا الشخص."
+  },
+  "badges": {
+    "business": "مرتبط بنشاط تجاري",
+    "marriedIn": "انضم إلى العائلة بالزواج",
+    "deceased": "متوفى"
+  },
+  "marriedYear": "تزوجا {{year}}",
+  "arranging": "جارٍ ترتيب الشجرة…",
+  "emptyYear": "لم يولد أحد من هذه العائلة حتى عام {{year}}.",
+  "empty": "لا يوجد أشخاص في هذه العائلة بعد.",
+  "rel": {
+    "father": "الأب",
+    "mother": "الأم",
+    "parent": "أحد الوالدين",
+    "husband": "الزوج",
+    "wife": "الزوجة",
+    "spouse": "الزوج/الزوجة",
+    "exHusband": "الزوج السابق",
+    "exWife": "الزوجة السابقة",
+    "exSpouse": "الزوج السابق",
+    "lateHusband": "الزوج الراحل",
+    "lateWife": "الزوجة الراحلة",
+    "brother": "الأخ",
+    "sister": "الأخت",
+    "sibling": "الأخ/الأخت",
+    "halfBrother": "أخ غير شقيق",
+    "halfSister": "أخت غير شقيقة",
+    "halfSibling": "أخ غير شقيق",
+    "son": "الابن",
+    "daughter": "الابنة",
+    "child": "الابن/الابنة"
+  },
+  "sections": {
+    "parents": "الوالدان",
+    "spouses": "الأزواج",
+    "siblings": "الإخوة والأخوات",
+    "children": "الأبناء"
+  },
+  "person": {
+    "defaultHint": "يُعرض الآن {{name}}، أقدم أفراد العائلة. ابحث عن أي شخص أو انقر على بطاقة للتمركز عليه.",
+    "noParents": "لا يوجد والدان مسجلان",
+    "noSpouses": "لا يوجد زوج مسجل",
+    "noSiblings": "لا يوجد إخوة",
+    "noChildren": "لا يوجد أبناء مسجلون",
+    "openProfile": "فتح الملف",
+    "occupation": "المهنة",
+    "city": "المدينة",
+    "businesses": "الأنشطة التجارية",
+    "notBornYet": "وُلد {{name}} بعد عام {{year}}. حرّك شريط السنوات إلى الأمام لرؤيته."
+  },
+  "generation": {
+    "title": "الجيل {{n}}",
+    "count_zero": "لا أحد",
+    "count_one": "شخص واحد",
+    "count_two": "شخصان",
+    "count_few": "{{count}} أشخاص",
+    "count_many": "{{count}} شخصًا",
+    "count_other": "{{count}} شخص",
+    "span": "المواليد <y>{{from}}–{{to}}</y>",
+    "total_zero": "لا أحد",
+    "total_one": "شخص واحد في {{gens}} أجيال",
+    "total_two": "شخصان في {{gens}} أجيال",
+    "total_few": "{{count}} أشخاص في {{gens}} أجيال",
+    "total_many": "{{count}} شخصًا في {{gens}} أجيال",
+    "total_other": "{{count}} شخص في {{gens}} أجيال"
+  }
+}

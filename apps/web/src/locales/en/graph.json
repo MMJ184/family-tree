@@ -1,0 +1,10 @@
+{
+  "modeLabel": "Graph mode",
+  "mode": { "2d": "2D", "3d": "3D" },
+  "modeHint": { "2d": "Flat network you can drag and zoom", "3d": "Rotate the network in 3D" },
+  "fit": "Fit everyone on screen",
+  "legend": { "parentChild": "Parent and child", "marriage": "Marriage", "business": "Business" },
+  "marriedIn": "Married in",
+  "since": "Since",
+  "noWebgl": "3D is not available on this device, so the graph stays in 2D."
+}

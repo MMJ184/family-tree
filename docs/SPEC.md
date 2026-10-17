@@ -1,10 +1,10 @@
-# Family Tree Manager — Product Spec v0.5
+# Family Tree Manager — Product Spec v0.6
 
 | | |
 |---|---|
 | Status | Draft |
 | Owner | MMJ |
-| Date | 2026-10-07 |
+| Date | 2026-10-17 |
 | Platform | Web app (desktop + mobile browser) |
 | Frontend | React (high-end UI, 3D / 4D tree views) |
 | Backend | Node.js + Hono (same stack as the Syvona project) |
@@ -50,7 +50,7 @@ Rules:
 | Father's name, Grandfather's name (nasab), Tribe / Family name, Kunya, Laqab | text | no |
 | Maiden name | text | no |
 | Gender | Male / Female / Other | yes |
-| Date of birth / Date of death | date with precision (full date, month-year, or year-only) and an "approx" flag; displayed in Gregorian (Hijri display: see open question 2) | no |
+| Date of birth / Date of death | date with precision (full date, month-year, or year-only) and an "approx" flag; displayed in Gregorian (Hijri display: see open question 1) | no |
 | Is living | bool | yes (default true; forced to false when a date of death is set) |
 | Birth place / Current city | text | no |
 | Photo | image | no |
@@ -106,7 +106,7 @@ Common controls: zoom, pan, collapse/expand branch, click a card to open details
 
 ### 3.4.1 Language & RTL (v1)
 - UI fully available in **English and Arabic**; Arabic is the default for this client.
-- Full **right-to-left** layout when Arabic is active: mirrored navigation, forms, tree direction options, numbers and dates localized.
+- Full **right-to-left** layout when Arabic is active: mirrored navigation, forms, tree direction mirrored (decision #10), numbers and dates localized.
 - Names and text fields store both scripts; search works in Arabic and English (normalize alef/hamza/ta-marbuta variants).
 - Arabic-friendly typography (e.g. IBM Plex Sans Arabic / Cairo / Tajawal).
 - Built with i18n from day one (e.g. `i18next`) so more languages can be added later.
@@ -228,10 +228,11 @@ DNA integration, public search across families, payments, native mobile apps, GE
 | 6 | Business contact visibility | Visible to Viewers of same family; GST/registration admin-only |
 | 7 | Backend framework and package set (2026-10-07) | Same backend and frontend stack and packages as the Syvona project: Hono + Prisma API, Vite + TanStack React web, pnpm monorepo |
 | 8 | Auth sessions (2026-10-07) | Server-side sessions stored in PostgreSQL, as in Syvona — replaces JWT |
+| 9 | Client demo first (2026-10-17) | Build the web app first, with no backend, to demo to the client. `apps/web` calls a mock API that runs in the browser (in-memory data seeded with sample families, saved in browser storage, with a "reset demo" action) and applies the same role and visibility rules as the real API will. A demo login lets the presenter switch between Super Admin, Family Admin and Viewer. The real Hono API later replaces the mock layer behind the same service functions. The demo is built as static files and served from our own server (Docker + nginx). |
+| 10 | Tree direction in Arabic (2026-10-17) | Mirror to right-to-left in Arabic. In horizontal trees and timelines the founder or earliest year sits on the right and generations or years run leftwards. In top-down trees, siblings and spouses are ordered right to left, so the eldest is on the right. English keeps left-to-right. |
 
 **Still open**
 1. Hijri date display — needed at launch or later?
-2. Default tree direction in Arabic (right-to-left horizontal vs. top-down)?
 
 ## 11. Success Criteria (v1)
 - Super Admin can create 2 families and they are fully isolated.

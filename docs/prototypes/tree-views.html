@@ -1,0 +1,1262 @@
+<title>Family Tree Views</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;700&display=swap">
+<style>
+/* Layout: header, then tree stage beside a person panel, then a time strip that drives every view. */
+:root {
+  --bg: #eef2f4;
+  --surface: #ffffff;
+  --surface-2: #f6f8f9;
+  --ink: #15222c;
+  --muted: #586977;
+  --line: #cfd8de;
+  --line-strong: #8fa1ad;
+  --dot: #d6dee3;
+  --accent: #0e7268;
+  --accent-soft: #d5ece9;
+  --gold: #a86a12;
+  --dead-fill: #e9edf0;
+  --glass: rgba(255, 255, 255, 0.78);
+  --f-display: "Reem Kufi", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1419; --surface: #142028; --surface-2: #101a21; --ink: #e4ecf1; --muted: #93a5b2;
+    --line: #2a3a46; --line-strong: #5d7484; --dot: #1d2b35; --accent: #3cc7b6; --accent-soft: #123a37;
+    --gold: #e0ad55; --dead-fill: #1a252d; --glass: rgba(20, 32, 40, 0.8); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c1419; --surface: #142028; --surface-2: #101a21; --ink: #e4ecf1; --muted: #93a5b2;
+  --line: #2a3a46; --line-strong: #5d7484; --dot: #1d2b35; --accent: #3cc7b6; --accent-soft: #123a37;
+  --gold: #e0ad55; --dead-fill: #1a252d; --glass: rgba(20, 32, 40, 0.8); color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font: 15px/1.5 var(--f-body); }
+.app { max-width: 1280px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 40px; display: grid; gap: 16px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; }
+.top h1 { font: 700 clamp(22px, 3vw, 30px)/1.15 var(--f-display); margin: 0; text-wrap: balance; letter-spacing: 0.005em; }
+.top p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; }
+.seg { display: inline-flex; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+.stage { position: relative; height: clamp(420px, 62vh, 720px); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden;
+  background-color: var(--surface-2); background-image: radial-gradient(var(--dot) 1.2px, transparent 1.3px); background-size: 22px 22px; }
+#svg2d, .pz { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#svg2d.drag, .pz.drag { cursor: grabbing; }
+#view3d { position: absolute; inset: 0; }
+#view3d canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.tools { position: absolute; inset-block-start: 10px; inset-inline-end: 10px; display: flex; gap: 6px; }
+.tools button { min-width: 34px; height: 34px; padding-inline: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--glass);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 13px; font-weight: 500; }
+.hint { position: absolute; inset-block-end: 10px; inset-inline-start: 12px; margin: 0; font-size: 12px; color: var(--muted);
+  background: var(--glass); padding: 3px 8px; border-radius: 6px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.notice { position: absolute; inset-inline: 16px; inset-block-start: 50%; transform: translateY(-50%); margin: 0 auto; max-width: 420px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; text-align: center; }
+
+/* 2D tree */
+.node rect.card { fill: var(--surface); stroke: var(--line); stroke-width: 1; }
+.node.sel rect.card { stroke: var(--accent); stroke-width: 2.2; }
+.node.dead rect.card { fill: var(--dead-fill); stroke-dasharray: 4 3; }
+.node .nm { fill: var(--ink); font: 600 13px var(--f-body); }
+.node.dead .nm { fill: var(--muted); }
+.node .yr { fill: var(--muted); font: 11px var(--f-mono); }
+.node .tag { fill: var(--gold); font: 500 10.5px var(--f-body); }
+.node .biz { fill: var(--gold); }
+.node { cursor: pointer; transition: opacity .45s ease; }
+.edge { fill: none; stroke: var(--line-strong); stroke-width: 1.4; transition: opacity .45s ease; }
+.edge.sp { stroke: var(--gold); stroke-width: 1.2; }
+.union circle { fill: var(--gold); }
+.union text { fill: var(--muted); font: 10px var(--f-mono); }
+.union { transition: opacity .45s ease; }
+.gone { opacity: 0; pointer-events: none; }
+
+/* Panel */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.panel h2 { font: 700 19px/1.25 var(--f-display); margin: 0; }
+.who { display: flex; gap: 12px; align-items: flex-start; }
+.whotext { min-width: 0; }
+.pic { display: grid; gap: 4px; justify-items: center; flex: none; }
+.pic img { width: 64px; height: 64px; border-radius: 50%; display: block; }
+.addpic { font-size: 11px; color: var(--accent); cursor: pointer; font-weight: 500; }
+.addpic input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.addpic:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.panel .alt { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.panel .yrs { font: 13px var(--f-mono); color: var(--muted); margin: 6px 0 0; font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.chip.gold { background: transparent; border: 1px solid var(--gold); color: var(--gold); }
+.panel dl { margin: 0; display: grid; gap: 10px; }
+.panel dt { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.panel dd { margin: 3px 0 0; display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.pl { border: 1px solid var(--line); background: var(--surface-2); border-radius: 6px; padding: 2px 8px; font-size: 13px; }
+.pl small { color: var(--muted); font-family: var(--f-mono); font-size: 11px; }
+.none { color: var(--muted); font-size: 13px; }
+.panel .fine { font-size: 12px; color: var(--muted); margin: 0; border-top: 1px solid var(--line); padding-top: 10px; }
+
+/* Time strip */
+.time { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r); padding: 12px 16px; }
+.play { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--accent); color: var(--surface); display: grid; place-items: center; }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+[dir="rtl"] .play svg.tri { transform: scaleX(-1); }
+.track { position: relative; padding-block-start: 16px; min-width: 0; }
+.ticks { position: absolute; inset-block-start: 0; inset-inline: 8px; height: 12px; }
+.tick { position: absolute; inset-block-start: 0; width: 2px; height: 12px; border-radius: 1px; }
+.tick.b { background: var(--accent); }
+.tick.m { background: var(--gold); height: 8px; inset-block-start: 4px; }
+.tick.d { background: var(--line-strong); height: 6px; inset-block-start: 6px; }
+.tick.z { background: var(--ink); width: 6px; height: 6px; inset-block-start: 3px; transform: rotate(45deg); border-radius: 1px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+.year { font: 500 26px var(--f-mono); font-variant-numeric: tabular-nums; min-width: 4.2ch; text-align: center; }
+.under { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; }
+.stats strong { color: var(--ink); font-weight: 600; }
+
+.notes { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; }
+.notes h3 { margin: 0 0 8px; font: 700 16px var(--f-display); }
+.notes ol { margin: 0; padding-inline-start: 20px; display: grid; gap: 6px; max-width: 80ch; }
+.notes b { font-weight: 600; }
+/* Graph and mind map views */
+.gone { opacity: 0 !important; pointer-events: none; }
+.viewbox { position: absolute; inset: 0; background: var(--surface-2); }
+.viewbox > div:not(.sub) { position: absolute; inset: 0; }
+.sub { position: absolute; inset-block-start: 10px; inset-inline-start: 10px; display: grid; gap: 8px; justify-items: start; z-index: 2; max-width: calc(100% - 200px); }
+.sub .seg { background: var(--glass); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.sub .seg button { padding: 4px 12px; font-size: 13px; }
+.gset { background: var(--glass); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--line); border-radius: 10px; font-size: 13px; min-width: 210px; }
+.gset summary { cursor: pointer; padding: 6px 12px; font-weight: 600; }
+.gset .rows { display: grid; gap: 8px; padding: 4px 12px 12px; }
+.gset label { display: flex; align-items: center; gap: 8px; }
+.gset label.rng { display: grid; gap: 2px; color: var(--muted); }
+.gset input[type="range"] { width: 100%; }
+.gset button { justify-self: start; border: 1px solid var(--accent); color: var(--accent); background: transparent; border-radius: 8px; padding: 4px 12px; font-size: 13px; font-weight: 500; }
+#mindMap { direction: ltr; position: absolute !important; inset: 0; width: 100%; height: 100%; }
+#mindMap .map-container { background: var(--surface-2); }
+#mindMap me-tpc { font-family: var(--f-body); }
+/* Mind Elixir 5.15.1 stylesheet (inlined: the artifact CSP blocks external stylesheets) */
+.map-container p{margin:0}.map-container{-webkit-tap-highlight-color:transparent;-webkit-user-select:none;-ms-user-select:none;user-select:none;touch-action:none;outline:none;width:100%;height:100%;font-family:-apple-system,BlinkMacSystemFont,Helvetica Neue,PingFang SC,Microsoft YaHei,Source Han Sans SC,Noto Sans CJK SC,WenQuanYi Micro Hei,sans-serif;font-size:16px;overflow:hidden}.map-container *{box-sizing:border-box}.map-container::-webkit-scrollbar{width:0;height:0}.map-container .selected{outline:2px solid var(--selected);outline-offset:1px}.map-container.space-pressed,.map-container.space-pressed *{cursor:grab!important}.map-container.space-pressed:active,.map-container.space-pressed:active *{cursor:grabbing!important}.map-container .hyper-link{margin-left:.3em;text-decoration:none}.map-container me-main>me-wrapper>me-parent>me-epd{top:calc(50% - 9px)}.map-container me-epd{top:calc(100% - 9px)}.map-container .lhs{direction:rtl}.map-container .lhs>me-wrapper>me-parent>me-epd{left:-10px}.map-container .lhs me-epd{left:5px}.map-container .lhs me-tpc{direction:ltr}.map-container .rhs>me-wrapper>me-parent>me-epd{right:-10px}.map-container .rhs me-epd{right:5px}.map-container me-nodes.down{flex-direction:column}.map-container me-nodes.down me-main{flex-direction:row;justify-content:center;align-items:flex-start;display:flex}.map-container me-nodes.down>me-main>me-wrapper{margin:var(--main-gap-x) var(--main-gap-y)}.map-container me-nodes.down me-wrapper{flex-direction:column;align-items:center;display:flex}.map-container me-nodes.down me-children{margin-top:var(--node-gap-x);flex-direction:row;justify-content:center;align-items:flex-start;display:flex}.map-container me-nodes.down me-parent{padding:0 var(--node-gap-y);margin:0}.map-container me-nodes.down me-children me-parent>me-tpc{border:1px solid var(--main-color);background-color:var(--main-bgcolor);border-radius:6px;padding:6px 12px}.map-container me-nodes.down me-epd{top:calc(100% - 9px);left:calc(50% - 9px);right:auto}.map-container me-nodes.down>me-main>me-wrapper>me-parent>me-epd{top:calc(100% - 9px);left:calc(50% - 9px);right:auto}.map-container me-nodes.down .insert-preview.before{width:14px;height:100%;top:0;left:-14px}.map-container me-nodes.down .insert-preview.after{width:14px;height:100%;top:0;left:auto;right:-14px}.map-container{background-color:var(--bgcolor)}.map-container .map-canvas{pointer-events:none;-webkit-user-select:none;-ms-user-select:none;user-select:none;width:-webkit-fit-content;width:fit-content;position:relative;transform:scale(1)}.map-container .map-canvas me-nodes{width:-webkit-max-content;width:max-content;height:-webkit-max-content;height:max-content;padding:var(--map-padding);justify-content:center;align-items:center;display:flex;position:relative}.map-container me-main>me-wrapper{margin:var(--main-gap-y) var(--main-gap-x);position:relative}.map-container me-main>me-wrapper>me-parent{margin:10px;padding:0}.map-container me-main>me-wrapper>me-parent>me-tpc{border-radius:var(--main-radius);background-color:var(--main-bgcolor);border:var(--main-border,2px solid var(--main-color));color:var(--main-color);padding:8px 25px}.map-container me-wrapper{width:-webkit-fit-content;width:fit-content;display:block}.map-container me-children{vertical-align:middle;display:inline-block}.map-container me-parent{vertical-align:middle;display:inline-block}.map-container me-root{z-index:10;margin:45px 0;position:relative}.map-container me-root me-tpc{color:var(--root-color);border-radius:var(--root-radius);border:var(--root-border-color) 2px solid;background-color:var(--root-bgcolor);padding:10px 30px;font-size:25px}.map-container me-parent{cursor:pointer;padding:6px var(--node-gap-x);margin-top:var(--node-gap-y);z-index:10;position:relative}.map-container me-parent me-tpc{color:var(--color);padding:var(--topic-padding);border-radius:3px;position:relative}.map-container me-parent me-tpc .insert-preview{z-index:9;width:100%;position:absolute;left:0}.map-container me-parent me-tpc .show{pointer-events:none;opacity:.7;background:#7ad5ff;border-radius:3px}.map-container me-parent me-tpc .before{height:14px;top:-14px}.map-container me-parent me-tpc .in{height:100%;top:0}.map-container me-parent me-tpc .after{height:14px;bottom:-14px}.map-container me-parent me-epd{opacity:.8;pointer-events:all;z-index:9;background-image:url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/PjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+CjxzdmcgdD0iMTY1NjY1NDcxNzI0MiIgY2xhc3M9Imljb24iIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHZlcnNpb249IjEuMSIKICAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+CiAgICA8cGF0aCBkPSJNNTEyIDc0LjY2NjY2N0MyNzAuOTMzMzMzIDc0LjY2NjY2NyA3NC42NjY2NjcgMjcwLjkzMzMzMyA3NC42NjY2NjcgNTEyUzI3MC45MzMzMzMgOTQ5LjMzMzMzMyA1MTIgOTQ5LjMzMzMzMyA5NDkuMzMzMzMzIDc1My4wNjY2NjcgOTQ5LjMzMzMzMyA1MTIgNzUzLjA2NjY2NyA3NC42NjY2NjcgNTEyIDc0LjY2NjY2N3oiIHN0cm9rZS13aWR0aD0iNTQiIHN0cm9rZT0nYmxhY2snIGZpbGw9J3doaXRlJyA+PC9wYXRoPgogICAgPHBhdGggZD0iTTY4Mi42NjY2NjcgNDgwaC0xMzguNjY2NjY3VjM0MS4zMzMzMzNjMC0xNy4wNjY2NjctMTQuOTMzMzMzLTMyLTMyLTMycy0zMiAxNC45MzMzMzMtMzIgMzJ2MTM4LjY2NjY2N0gzNDEuMzMzMzMzYy0xNy4wNjY2NjcgMC0zMiAxNC45MzMzMzMtMzIgMzJzMTQuOTMzMzMzIDMyIDMyIDMyaDEzOC42NjY2NjdWNjgyLjY2NjY2N2MwIDE3LjA2NjY2NyAxNC45MzMzMzMgMzIgMzIgMzJzMzItMTQuOTMzMzMzIDMyLTMydi0xMzguNjY2NjY3SDY4Mi42NjY2NjdjMTcuMDY2NjY3IDAgMzItMTQuOTMzMzMzIDMyLTMycy0xNC45MzMzMzMtMzItMzItMzJ6Ij48L3BhdGg+Cjwvc3ZnPg==);background-position:50%;background-repeat:no-repeat;background-size:contain;width:18px;height:18px;position:absolute}.map-container me-parent me-epd.minus{opacity:0;transition:opacity .3s;background-image:url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/PjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+CjxzdmcgdD0iMTY1NjY1NTU2NDk4NSIgY2xhc3M9Imljb24iIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHZlcnNpb249IjEuMSIKICAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+CiAgICA8cGF0aCBkPSJNNTEyIDc0LjY2NjY2N0MyNzAuOTMzMzMzIDc0LjY2NjY2NyA3NC42NjY2NjcgMjcwLjkzMzMzMyA3NC42NjY2NjcgNTEyUzI3MC45MzMzMzMgOTQ5LjMzMzMzMyA1MTIgOTQ5LjMzMzMzMyA5NDkuMzMzMzMzIDc1My4wNjY2NjcgOTQ5LjMzMzMzMyA1MTIgNzUzLjA2NjY2NyA3NC42NjY2NjcgNTEyIDc0LjY2NjY2N3oiIHN0cm9rZS13aWR0aD0iNTQiIHN0cm9rZT0nYmxhY2snIGZpbGw9J3doaXRlJyA+PC9wYXRoPgogICAgPHBhdGggZD0iTTY4Mi42NjY2NjcgNTQ0SDM0MS4zMzMzMzNjLTE3LjA2NjY2NyAwLTMyLTE0LjkzMzMzMy0zMi0zMnMxNC45MzMzMzMtMzIgMzItMzJoMzQxLjMzMzMzNGMxNy4wNjY2NjcgMCAzMiAxNC45MzMzMzMgMzIgMzJzLTE0LjkzMzMzMyAzMi0zMiAzMnoiPjwvcGF0aD4KPC9zdmc+)!important}@media (hover:hover){.map-container me-parent me-epd.minus:hover{opacity:.8}}@media (hover:none){.map-container me-parent me-epd.minus{opacity:.8}}.map-container .icon{vertical-align:-.15em;fill:currentColor;width:1em;height:1em;overflow:hidden}.map-container .lines,.map-container .summary,.map-container .subLines,.map-container .topiclinks,.map-container .linkcontroller{width:100%;height:102%;position:absolute;top:0;left:0}.map-container .topiclinks,.map-container .linkcontroller,.map-container .summary{pointer-events:none;z-index:20}.map-container .summary>g{cursor:pointer;pointer-events:stroke;z-index:20}.map-container .topiclinks>g{cursor:pointer;pointer-events:stroke;z-index:20}.map-container .label-container{z-index:21}.map-container .lines,.map-container .subLines{pointer-events:none}.map-container #input-box{-webkit-user-select:auto;-ms-user-select:auto;user-select:auto;pointer-events:auto;width:-webkit-max-content;width:max-content;max-width:35em;color:var(--color);background-color:var(--bgcolor);z-index:100;direction:ltr;border-radius:3px;outline:1px solid #ccc;position:absolute;top:0;left:0}.map-container me-tpc{white-space:pre-wrap;pointer-events:all;max-width:35em;display:block}.map-container me-tpc>*{pointer-events:none}.map-container me-tpc>a{pointer-events:auto}.map-container me-tpc>iframe{pointer-events:auto}.map-container me-tpc>.text{display:inline-block}.map-container me-tpc>.text a{pointer-events:auto}.map-container me-tpc>img{object-fit:cover;margin-bottom:8px;display:block}.map-container .circle{pointer-events:all;z-index:50;cursor:pointer;background:#757575;border:2px solid #fff;border-radius:100%;width:10px;height:10px;margin-top:-5px;margin-left:-5px;position:absolute}.map-container .circle:before{content:"";background:0 0;width:30px;height:30px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}.map-container .tags{direction:ltr}.map-container .tags span{color:#276f86;background:#d6f0f8;border-radius:3px;margin:2px 4px 0 0;padding:2px 4px;font-size:12px;line-height:1.3em;display:inline-block}.map-container .icons{direction:ltr;margin-left:5px;display:inline-block}.map-container .icons span{line-height:1.3em;display:inline-block}.map-container .mind-elixir-ghost{box-sizing:content-box;opacity:.7;background-color:var(--main-bgcolor);border:2px solid var(--main-color);color:var(--main-color);white-space:nowrap;text-overflow:ellipsis;pointer-events:none;z-index:1000;border-radius:6px;width:-webkit-fit-content;width:fit-content;max-width:200px;padding:8px 16px;display:none;position:absolute;top:0;left:0;overflow:hidden}.map-container .selection-area{background:#4f90f22d;border:1px solid #4f90f2}.map-container .svg-label{overflow-wrap:break-word;-webkit-hyphens:auto;-ms-hyphens:auto;hyphens:auto;pointer-events:auto;cursor:pointer;z-index:10;width:-webkit-max-content;width:max-content;line-height:1.2;position:absolute}.map-container .svg-label p{max-width:200px}.map-container .svg-label{padding:var(--topic-padding);border-radius:3px}.map-container .svg-label[data-type=arrow]{background-color:var(--main-bgcolor-transparent)}.map-container h1{color:var(--selected);font-size:1.5rem;font-weight:700}.map-container h2{color:var(--selected);font-size:1.25rem;font-weight:600}.map-container h3{color:var(--selected);font-size:1.125rem;font-weight:600}.map-container h4{color:var(--selected);font-size:1rem;font-weight:600}.map-container h5{color:var(--selected);font-size:.875rem;font-weight:600}.map-container h6{color:var(--selected);margin:.1rem 0;font-size:.875rem;font-style:italic;font-weight:500}.map-container strong.asterisk-emphasis,.map-container em{color:var(--selected)}.map-container strong.underscore-emphasis{background:#ffeb3b40;border-radius:.15em;padding:.05em .15em}.map-container a{color:var(--selected)}.map-container a:hover{color:var(--selected);text-decoration:underline}.map-container .context-menu{z-index:99;width:100%;height:100%;position:fixed;top:0;left:0}.map-container .context-menu .menu-list{color:var(--panel-color);border-radius:5px;margin:0;padding:0;list-style:none;position:fixed;overflow:hidden;box-shadow:0 12px 15px #0003}.map-container .context-menu .menu-list li{white-space:nowrap;background:var(--panel-bgcolor);border-bottom:1px solid var(--panel-border-color);cursor:pointer;min-width:200px;padding:6px 10px;overflow:hidden}.map-container .context-menu .menu-list li span{line-height:20px}.map-container .context-menu .menu-list li a{color:#333;text-decoration:none}.map-container .context-menu .menu-list li.disabled{display:none}.map-container .context-menu .menu-list li:hover{filter:brightness(.95)}.map-container .context-menu .menu-list li:last-child{border-bottom:0}.map-container .context-menu .menu-list li span:last-child{float:right}.map-container .context-menu .key{color:#333;background-color:#f1f1f1;border-radius:3px;padding:2px 5px;font-size:10px}.map-container .tips{color:var(--panel-color);background:var(--panel-bgcolor);opacity:.8;border-radius:5px;padding:5px 10px;font-weight:700;position:absolute;bottom:28px;left:50%;transform:translate(-50%)}.mind-elixir-toolbar{color:var(--panel-color);background:var(--panel-bgcolor);border-radius:5px;padding:10px;position:absolute;box-shadow:0 1px 2px #0003}.mind-elixir-toolbar svg{display:inline-block}.mind-elixir-toolbar span:active{opacity:.5}.mind-elixir-toolbar.rb{bottom:20px;right:20px}.mind-elixir-toolbar.rb span+span{margin-left:10px}.mind-elixir-toolbar.lt{font-size:20px;top:20px;left:20px}.mind-elixir-toolbar.lt span{display:block}.mind-elixir-toolbar.lt span+span{margin-top:10px}
+
+@media (prefers-reduced-motion: reduce) { .node, .edge, .union { transition: none; } }
+</style>
+
+<div class="app" id="app" dir="ltr" lang="en">
+  <header class="top">
+    <div>
+      <h1 data-t="title"></h1>
+      <p data-t="sub"></p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="View">
+        <button id="v2d" aria-pressed="true" data-t="tab2d"></button>
+        <button id="v3d" aria-pressed="false" data-t="tab3d"></button>
+        <button id="vGraph" aria-pressed="false" data-t="tabG"></button>
+        <button id="vMind" aria-pressed="false" data-t="tabM"></button>
+      </div>
+      <div class="seg" role="group" aria-label="Language">
+        <button id="lEn" aria-pressed="true">English</button>
+        <button id="lAr" aria-pressed="false" lang="ar">عربي</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="stage" id="stage">
+      <svg id="svg2d" role="img" aria-label="Family tree"><g id="vp"><g id="gEdges"></g><g id="gUnions"></g><g id="gNodes"></g></g></svg>
+      <div id="graphView" class="viewbox" hidden>
+        <div id="graph2d"></div>
+        <div id="graph3d" hidden></div>
+        <div class="sub">
+          <div class="seg" role="group" aria-label="Graph mode"><button id="g2" aria-pressed="true">2D</button><button id="g3" aria-pressed="false">3D</button></div>
+          <details class="gset">
+            <summary data-t="gSet"></summary>
+            <div class="rows">
+              <label><input type="checkbox" id="oFam" checked> <span data-t="oFam"></span></label>
+              <label><input type="checkbox" id="oCards" checked> <span data-t="oCards"></span></label>
+              <label><input type="checkbox" id="oBiz" checked> <span data-t="oBiz"></span></label>
+              <label class="rng"><span data-t="oFade"></span><input type="range" id="oFade" min="0.3" max="4" step="0.1" value="0.8"></label>
+              <label class="rng"><span data-t="oSize"></span><input type="range" id="oSize" min="0.6" max="2.2" step="0.1" value="1"></label>
+              <label class="rng"><span data-t="oRepel"></span><input type="range" id="oRepel" min="10" max="300" step="5" value="110"></label>
+              <label class="rng"><span data-t="oDist"></span><input type="range" id="oDist" min="10" max="90" step="2" value="30"></label>
+              <button id="oAnim" data-t="oAnim"></button>
+            </div>
+          </details>
+        </div>
+      </div>
+      <div id="mindView" class="viewbox" hidden>
+        <div id="mindMap"></div>
+        <div class="sub">
+          <div class="seg" role="group" aria-label="Mind map mode"><button id="mFam" aria-pressed="true" data-t="mFam"></button><button id="mPer" aria-pressed="false" data-t="mPer"></button></div>
+        </div>
+      </div>
+      <div id="view3d" hidden></div>
+      <div class="tools">
+        <button id="zIn" aria-label="Zoom in">+</button>
+        <button id="zOut" aria-label="Zoom out">−</button>
+        <button id="fitB" data-t="fit"></button>
+        <button id="focB" data-t="focus"></button>
+      </div>
+      <p class="hint" id="hint"></p>
+      <p class="notice" id="notice" hidden></p>
+    </section>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </div>
+
+  <section class="time" aria-label="Time">
+    <button class="play" id="playB"></button>
+    <div class="track">
+      <div class="ticks" id="ticks"></div>
+      <input type="range" id="yr" min="1925" max="2026" step="1" value="2026">
+    </div>
+    <output class="year" id="yrOut" for="yr">2026</output>
+  </section>
+  <div class="under">
+    <p class="stats" id="stats" style="margin:0"></p>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <section class="notes">
+    <h3 data-t="nTitle"></h3>
+    <ol id="notes"></ol>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/elkjs@0.9.3/lib/elk.bundled.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/force-graph@1.52.0/dist/force-graph.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-elixir@5.15.1/dist/MindElixir.iife.js"></script>
+<script>
+// ---------- Sample data (invented) ----------
+const FAM = {
+  mansouri: { en: 'Al Mansouri', ar: 'المنصوري' }, kaabi: { en: 'Al Kaabi', ar: 'الكعبي' },
+  zaabi: { en: 'Al Zaabi', ar: 'الزعابي' }, suwaidi: { en: 'Al Suwaidi', ar: 'السويدي' },
+  mazrouei: { en: 'Al Mazrouei', ar: 'المزروعي' }, shamsi: { en: 'Al Shamsi', ar: 'الشامسي' },
+  ketbi: { en: 'Al Ketbi', ar: 'الكتبي' }, hammadi: { en: 'Al Hammadi', ar: 'الحمادي' }, marri: { en: 'Al Marri', ar: 'المري' },
+  nuaimi: { en: 'Al Nuaimi', ar: 'النعيمي' },
+};
+const P = (id, en, ar, sex, born, died, fam = 'mansouri', extra = {}) => ({ id, en, ar, sex, born, died, fam, mi: fam !== 'mansouri', ...extra });
+const PEOPLE = [
+  P('k1', 'Khalid', 'خالد', 'M', 1905, 1978), P('f1', 'Fatima', 'فاطمة', 'F', 1910, 1990, 'kaabi'),
+  P('ai', 'Aisha', 'عائشة', 'F', 1935, 2018, 'zaabi'), P('a1', 'Ahmed', 'أحمد', 'M', 1930, 2005), P('no', 'Noura', 'نورة', 'F', 1945, null, 'suwaidi'),
+  P('ra', 'Rashid', 'راشد', 'M', 1957, null), P('am', 'Amna', 'آمنة', 'F', 1962, null, 'shamsi'),
+  P('kh', 'Khalid', 'خالد', 'M', 1986, null), P('da', 'Dana', 'دانة', 'F', 1990, null, 'marri'), P('ft', 'Fatima', 'فاطمة', 'F', 2016, null),
+  P('mh', 'Mohammed', 'محمد', 'M', 1989, null), P('sa', 'Sara', 'سارة', 'F', 1992, null), P('he', 'Hessa', 'حصة', 'F', 1960, null),
+  P('om', 'Omar', 'عمر', 'M', 1972, null), P('re', 'Reem', 'ريم', 'F', 1998, null, 'hammadi'), P('za', 'Zayed', 'زايد', 'M', 2022, null),
+  P('m1', 'Mariam', 'مريم', 'F', 1933, 2015, 'mansouri', { note: { en: 'Married into the Al Dhaheri family, which is not on this account.', ar: 'تزوجت في عائلة الظاهري، وهي غير مسجلة في هذا الحساب.' } }),
+  P('s1', 'Saeed', 'سعيد', 'M', 1936, 2012), P('sh', 'Shaikha', 'شيخة', 'F', 1940, null, 'mazrouei'),
+  P('su', 'Sultan', 'سلطان', 'M', 1964, null), P('mo', 'Moza', 'موزة', 'F', 1968, null, 'ketbi'),
+  P('hm', 'Hamdan', 'حمدان', 'M', 1992, null), P('al', 'Alyaa', 'علياء', 'F', 1995, null),
+  P('la', 'Latifa', 'لطيفة', 'F', 1967, null, 'mansouri', { also: { en: 'Al Nuaimi family', ar: 'عائلة النعيمي' } }),
+];
+const UNIONS = [
+  { id: 'u1', a: 'k1', b: 'f1', year: 1928, kids: ['a1', 'm1', 's1'] },
+  { id: 'u2', a: 'ai', b: 'a1', year: 1955, kids: ['ra', 'he'] },
+  { id: 'u3', a: 'a1', b: 'no', year: 1970, kids: ['om'] },
+  { id: 'u5', a: 'ra', b: 'am', year: 1984, kids: ['kh', 'mh', 'sa'] },
+  { id: 'u8', a: 'kh', b: 'da', year: 2014, kids: ['ft'] },
+  { id: 'u7', a: 'om', b: 're', year: 2020, kids: ['za'] },
+  { id: 'u4', a: 's1', b: 'sh', year: 1962, kids: ['su', 'la'] },
+  { id: 'u6', a: 'su', b: 'mo', year: 1990, kids: ['hm', 'al'] },
+];
+const BIZ = [
+  { id: 'b1', en: 'Mansouri Pearling', ar: 'لؤلؤ المنصوري', year: 1950, owners: ['k1'] },
+  { id: 'b2', en: 'Al Mansouri Trading', ar: 'المنصوري للتجارة', year: 1962, owners: ['a1', 's1'] },
+  { id: 'b3', en: 'Mansouri Logistics', ar: 'المنصوري للخدمات اللوجستية', year: 2010, owners: ['kh', 'hm'] },
+];
+const byId = Object.fromEntries(PEOPLE.map(p => [p.id, p]));
+const uById = Object.fromEntries(UNIONS.map(u => [u.id, u]));
+
+// ---------- Strings ----------
+const T = {
+  en: {
+    title: 'Family Tree Views', sub: 'Prototype with sample data: the Al Mansouri family (invented)',
+    tab2d: '2D tree', tab3d: '3D tree', tabG: 'Graph', tabM: 'Mind map', fit: 'Fit', focus: 'Focus',
+    hintG: 'Hover to light up connections · drag nodes · scroll in to reveal names', hintM: 'Drag to pan · scroll to zoom · click a name to select',
+    noLib: "This view's library didn't load. Check the connection and reload.",
+    gSet: 'Display and forces', oCards: 'Photo cards', since: 'Founded', addPhoto: 'Add photo', photoNote: 'Stays in this browser tab only.', oFam: 'Family nodes', oBiz: 'Businesses', oFade: 'Text fade threshold', oSize: 'Node size',
+    oRepel: 'Repel force', oDist: 'Link distance', oAnim: 'Animate growth', mFam: 'Whole family', mPer: 'Selected person',
+    famRoot: 'Al Mansouri family', marriedOut: 'Married out of the account',
+    hint2d: 'Drag to pan · scroll to zoom · click a card', hint3d: 'Drag to rotate · scroll to zoom · click a card to fly to it',
+    noGL: "3D isn't available on this device, so the 2D tree is shown instead.", noElk: "The layout library didn't load, so the tree can't be drawn.",
+    parents: 'Parents', spouses: 'Spouses', children: 'Children', siblings: 'Siblings', half: 'half', biz: 'Businesses',
+    bornIn: 'Born in this family', marriedIn: 'Married in', alsoIn: 'Also in', notBorn: 'Not born yet in', deceased: 'Deceased',
+    derived: 'Siblings are worked out from shared parents, not stored.', alive: 'alive in', last: 'Latest event',
+    born: n => `${n} born`, died: n => `${n} died`, married: (a, b) => `${a} and ${b} married`, founded: b => `${b} founded`,
+    lb: 'Births', lm: 'Marriages', ld: 'Deaths', lz: 'Businesses', play: 'Play the years', pause: 'Pause',
+    nTitle: 'How this example is built',
+    notes: [
+      '<b>One layout for every view.</b> ELK (layered) places people on a graph with a small node for each marriage. Spouses connect to the marriage node and children hang from it, so multiple spouses and married-in people lay out cleanly.',
+      '<b>2D</b> is plain SVG here. In the app the same positions would feed React Flow cards.',
+      '<b>3D</b> is three.js with the same positions: generations sit on discs, and married-in people sit one step forward. The app would use react-three-fiber, with instancing and a photo atlas to hold 60 fps at 500 people.',
+      '<b>4D</b> is one year value shared by both views. People, marriages and businesses appear when their year arrives, and people who have died are dimmed.',
+      '<b>Arabic</b> mirrors the layout coordinates instead of flipping with CSS, so the tree reads right to left while zoom and pan still behave normally.',
+      '<b>Graph</b> uses force-graph, the same canvas force layout style as Obsidian\'s graph view. Nodes are coloured by family the way Obsidian colours groups, labels fade in as you zoom, hovering lights up a node\'s links, and dragging pulls its neighbours. Open <i>Display and forces</i> for Obsidian\'s sliders, and <i>Animate growth</i> to watch the family appear year by year. Switch to 3D for the three.js version (3d-force-graph).',
+      '<b>Mind map</b> uses Mind Elixir, an XMind-style engine. <i>Whole family</i> branches from the founders down every line of descent, with one branch per marriage when someone has several spouses. Click the small circles to fold branches. <i>Selected person</i> builds a map of one person\'s relatives.',
+    ],
+  },
+  ar: {
+    title: 'عروض شجرة العائلة', sub: 'نموذج تجريبي ببيانات افتراضية: عائلة المنصوري',
+    tab2d: 'ثنائي الأبعاد', tab3d: 'ثلاثي الأبعاد', tabG: 'شبكة', tabM: 'خريطة ذهنية', fit: 'ملاءمة', focus: 'تركيز',
+    hintG: 'مرر فوق عقدة لإبراز صلاتها · اسحب العقد · كبّر لإظهار الأسماء', hintM: 'اسحب للتحريك · مرر للتكبير · اضغط على اسم لتحديده',
+    noLib: 'لم تُحمّل مكتبة هذا العرض. تحقق من الاتصال وأعد التحميل.',
+    gSet: 'العرض والقوى', oCards: 'بطاقات بالصور', since: 'تأسست', addPhoto: 'إضافة صورة', photoNote: 'تبقى في هذه الصفحة فقط.', oFam: 'عقد العائلات', oBiz: 'الأعمال', oFade: 'حد ظهور الأسماء', oSize: 'حجم العقد',
+    oRepel: 'قوة التنافر', oDist: 'طول الروابط', oAnim: 'تشغيل النمو', mFam: 'العائلة كاملة', mPer: 'الشخص المحدد',
+    famRoot: 'عائلة المنصوري', marriedOut: 'تزوجت خارج الحساب',
+    hint2d: 'اسحب للتحريك · مرر للتكبير · اضغط على بطاقة', hint3d: 'اسحب للتدوير · مرر للتكبير · اضغط على بطاقة للانتقال إليها',
+    noGL: 'العرض ثلاثي الأبعاد غير متاح على هذا الجهاز، لذلك تظهر الشجرة ثنائية الأبعاد.', noElk: 'لم تُحمّل مكتبة التخطيط، لذلك لا يمكن رسم الشجرة.',
+    parents: 'الوالدان', spouses: 'الأزواج', children: 'الأبناء', siblings: 'الإخوة', half: 'غير شقيق', biz: 'الأعمال',
+    bornIn: 'من مواليد العائلة', marriedIn: 'انضم بالزواج', alsoIn: 'أيضاً في', notBorn: 'لم يولد بعد في', deceased: 'متوفى',
+    derived: 'الإخوة يُستنتجون من الوالدين المشتركين ولا يُخزنون.', alive: 'على قيد الحياة في', last: 'آخر حدث',
+    born: (n, p) => `${p.sex === 'F' ? 'وُلدت' : 'وُلد'} ${n}`, died: (n, p) => `${p.sex === 'F' ? 'تُوفيت' : 'تُوفي'} ${n}`,
+    married: (a, b) => `زواج ${a} و${b}`, founded: b => `تأسيس ${b}`,
+    lb: 'مواليد', lm: 'زواج', ld: 'وفيات', lz: 'أعمال', play: 'تشغيل السنوات', pause: 'إيقاف',
+    nTitle: 'كيف بُني هذا المثال',
+    notes: [
+      '<b>تخطيط واحد لكل العروض.</b> مكتبة ELK بنمط الطبقات ترتب الأشخاص على رسم بياني فيه عقدة صغيرة لكل زواج. يتصل الزوجان بعقدة الزواج ويتفرع منها الأبناء، فيظهر تعدد الزوجات والمنضمون بالزواج بشكل مرتب.',
+      '<b>العرض الثنائي</b> هنا SVG بسيط. في التطبيق تُستخدم نفس المواقع لبطاقات React Flow.',
+      '<b>العرض الثلاثي</b> بمكتبة three.js وبنفس المواقع: كل جيل على قرص، والمنضمون بالزواج متقدمون خطوة للأمام. في التطبيق نستخدم react-three-fiber مع instancing وأطلس صور للحفاظ على 60 إطاراً في الثانية مع 500 شخص.',
+      '<b>العرض الرباعي</b> قيمة سنة واحدة يشترك فيها العرضان. يظهر الأشخاص والزيجات والأعمال عند حلول سنتها، ويُعتّم من توفي.',
+      '<b>العربية</b> تعكس إحداثيات التخطيط بدلاً من قلبها عبر CSS، فتُقرأ الشجرة من اليمين لليسار ويبقى التكبير والتحريك طبيعيين.',
+      '<b>الشبكة</b> بمكتبة force-graph بنفس أسلوب عرض الشبكة في Obsidian. العقد ملونة حسب العائلة، والأسماء تظهر مع التكبير، والمرور فوق عقدة يُبرز روابطها، وسحبها يجذب جيرانها. افتح <i>العرض والقوى</i> لأدوات التحكم، و<i>تشغيل النمو</i> لمشاهدة العائلة تكبر سنة بعد سنة. وفي الوضع الثلاثي تُستخدم 3d-force-graph المبنية على three.js.',
+      '<b>الخريطة الذهنية</b> بمحرك Mind Elixir على طريقة XMind. <i>العائلة كاملة</i> تتفرع من المؤسسين عبر كل الأجيال، مع فرع لكل زواج عند تعدد الأزواج. اضغط الدوائر الصغيرة لطي الفروع. و<i>الشخص المحدد</i> يبني خريطة لأقارب شخص واحد.',
+    ],
+  },
+};
+
+// ---------- State and helpers ----------
+const app = document.getElementById('app');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const state = { lang: 'en', view: '2d', year: 2026, sel: 'ra', mirror: 0, playing: false };
+const HINTS = { '2d': 'hint2d', '3d': 'hint3d', graph: 'hintG', mind: 'hintM' };
+const t = k => T[state.lang][k];
+const full = (p, l = state.lang) => `${p[l]} ${FAM[p.fam][l]}`;
+const cardName = p => (p.mi ? full(p) : p[state.lang]);
+const years = p => (p.died ? `${p.born}–${p.died}` : `${p.born}–`);
+const visible = id => byId[id].born <= state.year;
+const dead = id => byId[id].died && byId[id].died <= state.year;
+const uVisible = u => state.year >= u.year && visible(u.a) && visible(u.b);
+const CW = 150, CH = 54;
+const L = {}; let B = null;
+
+function pos(id) {
+  const n = L[id];
+  const mx = B.minX + B.maxX - n.x;
+  return { x: n.x + (mx - n.x) * state.mirror, y: n.y };
+}
+
+// Relations (siblings derived, never stored)
+const parentUnion = id => UNIONS.find(u => u.kids.includes(id));
+const unionsOf = id => UNIONS.filter(u => u.a === id || u.b === id);
+function relations(id) {
+  const pu = parentUnion(id);
+  const parents = pu ? [pu.a, pu.b] : [];
+  const spouses = unionsOf(id).map(u => ({ id: u.a === id ? u.b : u.a, year: u.year }));
+  const children = unionsOf(id).flatMap(u => u.kids);
+  const sib = new Map();
+  if (pu) {
+    pu.kids.forEach(k => k !== id && sib.set(k, false));
+    parents.forEach(par => unionsOf(par).forEach(u => u !== pu && u.kids.forEach(k => !sib.has(k) && sib.set(k, true))));
+  }
+  const biz = BIZ.filter(b => b.owners.includes(id));
+  return { parents, spouses, children, siblings: [...sib].map(([k, half]) => ({ id: k, half })), biz };
+}
+
+// ---------- Layout with ELK ----------
+function buildGraph() {
+  const order = ['k1', 'f1', 'u1', 'ai', 'a1', 'no', 'u2', 'u3', 'ra', 'am', 'u5', 'kh', 'da', 'u8', 'ft', 'mh', 'sa', 'he', 'om', 're', 'u7', 'za', 'm1', 's1', 'sh', 'u4', 'su', 'mo', 'u6', 'hm', 'al', 'la'];
+  const children = order.map(id => (uById[id] ? { id, width: 12, height: 12 } : { id, width: CW, height: CH }));
+  const edges = [];
+  UNIONS.forEach(u => {
+    edges.push({ id: `${u.id}-a`, sources: [u.a], targets: [u.id] }, { id: `${u.id}-b`, sources: [u.b], targets: [u.id] });
+    u.kids.forEach(k => edges.push({ id: `${u.id}-${k}`, sources: [u.id], targets: [k] }));
+  });
+  return {
+    id: 'root', children, edges,
+    layoutOptions: {
+      'elk.algorithm': 'layered', 'elk.direction': 'DOWN',
+      'elk.layered.layering.strategy': 'NETWORK_SIMPLEX',
+      'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
+      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+      'elk.spacing.nodeNode': '22', 'elk.layered.spacing.nodeNodeBetweenLayers': '34',
+    },
+  };
+}
+
+// ---------- 2D rendering ----------
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('svg2d'), vp = document.getElementById('vp');
+const gE = document.getElementById('gEdges'), gU = document.getElementById('gUnions'), gN = document.getElementById('gNodes');
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; };
+const R = { nodes: {}, unions: {}, spEdges: [], kidEdges: [] };
+
+function build2D() {
+  UNIONS.forEach(u => {
+    R.spEdges.push({ u, p: u.a, e: el('path', { class: 'edge sp' }, gE) }, { u, p: u.b, e: el('path', { class: 'edge sp' }, gE) });
+    u.kids.forEach(k => R.kidEdges.push({ u, k, e: el('path', { class: 'edge' }, gE) }));
+    const g = el('g', { class: 'union' }, gU);
+    el('circle', { r: 4.5 }, g);
+    const tx = el('text', { y: -8, 'text-anchor': 'middle' }, g); tx.textContent = u.year;
+    R.unions[u.id] = g;
+  });
+  PEOPLE.forEach(p => {
+    const g = el('g', { class: 'node', tabindex: 0, role: 'button' }, gN);
+    el('rect', { class: 'card', width: CW, height: CH, rx: 9 }, g);
+    const nm = el('text', { class: 'nm', x: CW / 2, y: 23, 'text-anchor': 'middle' }, g);
+    const yr = el('text', { class: 'yr', x: CW / 2, y: 41, 'text-anchor': 'middle' }, g);
+    const biz = el('rect', { class: 'biz', width: 7, height: 7, y: 7, rx: 1.5 }, g);
+    g.addEventListener('click', () => { if (!pzT.moved) select(p.id); });
+    g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(p.id); } });
+    R.nodes[p.id] = { g, nm, yr, biz };
+  });
+  texts2D();
+}
+
+function texts2D() {
+  PEOPLE.forEach(p => {
+    const n = R.nodes[p.id];
+    n.nm.textContent = cardName(p);
+    n.yr.textContent = '';
+    const a = document.createElementNS(NS, 'tspan'); a.textContent = years(p); n.yr.appendChild(a);
+    if (p.mi) { const b = document.createElementNS(NS, 'tspan'); b.setAttribute('class', 'tag'); b.textContent = `  · ${t('marriedIn')}`; n.yr.appendChild(b); }
+    n.nm.setAttribute('direction', state.lang === 'ar' ? 'rtl' : 'ltr');
+    n.biz.setAttribute('x', state.lang === 'ar' ? 8 : CW - 15);
+    n.g.setAttribute('aria-label', `${full(p)}, ${years(p)}`);
+  });
+}
+
+function render2D() {
+  if (!B) return;
+  PEOPLE.forEach(p => {
+    const n = R.nodes[p.id], q = pos(p.id);
+    n.g.setAttribute('transform', `translate(${q.x - CW / 2},${q.y - CH / 2})`);
+    n.g.classList.toggle('gone', !visible(p.id));
+    n.g.classList.toggle('dead', !!dead(p.id));
+    n.g.classList.toggle('sel', state.sel === p.id);
+    n.biz.style.display = BIZ.some(b => b.owners.includes(p.id) && b.year <= state.year) ? '' : 'none';
+  });
+  UNIONS.forEach(u => {
+    const q = pos(u.id);
+    R.unions[u.id].setAttribute('transform', `translate(${q.x},${q.y})`);
+    R.unions[u.id].classList.toggle('gone', !uVisible(u));
+  });
+  R.spEdges.forEach(({ u, p, e }) => {
+    const a = pos(p), m = pos(u.id), y0 = a.y + CH / 2;
+    e.setAttribute('d', `M${a.x},${y0} C${a.x},${m.y} ${a.x},${m.y} ${m.x},${m.y}`);
+    e.classList.toggle('gone', !uVisible(u));
+  });
+  R.kidEdges.forEach(({ u, k, e }) => {
+    const m = pos(u.id), c = pos(k), top = c.y - CH / 2, mid = (m.y + top) / 2;
+    e.setAttribute('d', `M${m.x},${m.y} V${mid} H${c.x} V${top}`);
+    e.classList.toggle('gone', !(uVisible(u) && visible(k)));
+  });
+}
+
+// Pan and zoom, shared by every SVG view
+function panZoom(svgEl, gEl, onChange) {
+  const v = { k: 1, tx: 0, ty: 0, moved: false };
+  let drag = null;
+  v.apply = () => { gEl.setAttribute('transform', `translate(${v.tx},${v.ty}) scale(${v.k})`); onChange && onChange(v); };
+  v.zoomAt = (mx, my, f) => {
+    const k = Math.min(3, Math.max(0.15, v.k * f)); f = k / v.k;
+    v.tx = mx - (mx - v.tx) * f; v.ty = my - (my - v.ty) * f; v.k = k; v.apply();
+  };
+  v.zoomCenter = f => { const r = svgEl.getBoundingClientRect(); v.zoomAt(r.width / 2, r.height / 2, f); };
+  v.fitBox = (x0, y0, x1, y1, pad = 36, max = 1.2) => {
+    const r = svgEl.getBoundingClientRect(); if (!r.width) return;
+    v.k = Math.min((r.width - 2 * pad) / (x1 - x0), (r.height - 2 * pad - 30) / (y1 - y0), max);
+    v.tx = r.width / 2 - v.k * (x0 + x1) / 2; v.ty = r.height / 2 - v.k * (y0 + y1) / 2; v.apply();
+  };
+  v.fitContent = (pad, max) => { const b = gEl.getBBox(); if (b.width) v.fitBox(b.x, b.y, b.x + b.width, b.y + b.height, pad, max); };
+  v.center = (x, y, minK = 0.9) => {
+    const r = svgEl.getBoundingClientRect(); v.k = Math.max(v.k, minK);
+    v.tx = r.width / 2 - v.k * x; v.ty = r.height / 2 - v.k * y; v.apply();
+  };
+  v.toLocal = (cx, cy) => { const r = svgEl.getBoundingClientRect(); return { x: (cx - r.left - v.tx) / v.k, y: (cy - r.top - v.ty) / v.k }; };
+  svgEl.addEventListener('wheel', e => { e.preventDefault(); const r = svgEl.getBoundingClientRect(); v.zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  svgEl.addEventListener('pointerdown', e => { v.moved = false; if (e.target.closest('.nodrag')) return; drag = { x: e.clientX, y: e.clientY, tx: v.tx, ty: v.ty }; });
+  addEventListener('pointermove', e => {
+    if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!v.moved && Math.hypot(dx, dy) > 4) { v.moved = true; svgEl.classList.add('drag'); }
+    if (v.moved) { v.tx = drag.tx + dx; v.ty = drag.ty + dy; v.apply(); }
+  });
+  addEventListener('pointerup', () => { drag = null; svgEl.classList.remove('drag'); });
+  return v;
+}
+const pzT = panZoom(svg, vp);
+const fit2D = () => pzT.fitBox(B.minX - CW / 2, B.minY - CH / 2, B.maxX + CW / 2, B.maxY + CH / 2);
+const focus2D = id => { const q = pos(id); pzT.center(q.x, q.y); };
+
+// ---------- Graph view: Obsidian-style (force-graph on canvas, 3d-force-graph on three.js) ----------
+const graphEl = document.getElementById('graphView');
+const g2El = document.getElementById('graph2d'), g3El = document.getElementById('graph3d');
+const PALETTE = {
+  mansouri: '#2f9e91', kaabi: '#c98a2b', zaabi: '#8e72d8', suwaidi: '#d0627f', mazrouei: '#3e8ed0',
+  shamsi: '#7da23b', ketbi: '#cf7440', hammadi: '#5b6cd8', marri: '#c05bb2', nuaimi: '#8a96a3',
+};
+const GX = { mode: '2d', f2: null, f3: null, s2: null, s3: null, sig: '', hover: null, nb: new Map(), col: {},
+  opt: { families: true, biz: true, cards: true, fade: 0.8, size: 1, repel: 110, dist: 30 } };
+function readCols() {
+  const s = getComputedStyle(app);
+  ['--ink', '--muted', '--line', '--line-strong', '--surface', '--surface-2', '--accent', '--gold', '--bg', '--dead-fill'].forEach(k => (GX.col[k] = s.getPropertyValue(k).trim()));
+}
+const rgba = (hex, a) => { const n = parseInt(hex.replace('#', ''), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+const isDark = () => parseInt(GX.col['--bg'].replace('#', ''), 16) < 0x808080;
+const nid = x => (typeof x === 'object' ? x.id : x);
+const rad = n => GX.opt.size * (n.kind === 'h' ? 4 + Math.sqrt(n.deg) * 1.3 : n.kind === 'b' ? 4.2 : 3 + Math.sqrt(n.deg) * 1.05);
+const gLabel = n => (n.kind === 'h' ? FAM[n.fam][state.lang] : n.kind === 'b' ? n.b[state.lang] : cardName(n.p));
+const isOn = id => !GX.hover || id === GX.hover || !!GX.nb.get(GX.hover)?.has(id);
+const isHiLink = l => !!GX.hover && (nid(l.source) === GX.hover || nid(l.target) === GX.hover);
+
+function makeStore() {
+  const nodes = [], links = [];
+  Object.keys(FAM).forEach(f => nodes.push({ id: `fam:${f}`, kind: 'h', fam: f }));
+  PEOPLE.forEach(p => nodes.push({ id: p.id, kind: 'p', p, fam: p.fam }));
+  BIZ.forEach(b => nodes.push({ id: b.id, kind: 'b', b }));
+  const add = (s, tg, kind, u) => links.push({ source: s, target: tg, kind, u });
+  UNIONS.forEach(u => { add(u.a, u.b, 'sp', u); u.kids.forEach(k => { add(u.a, k, 'pc', u); add(u.b, k, 'pc', u); }); });
+  BIZ.forEach(b => b.owners.forEach(o => add(o, b.id, 'bz')));
+  PEOPLE.forEach(p => { add(p.id, `fam:${p.fam}`, 'fam'); if (p.also) add(p.id, 'fam:nuaimi', 'fam'); });
+  const deg = {};
+  links.forEach(l => { deg[l.source] = (deg[l.source] || 0) + 1; deg[l.target] = (deg[l.target] || 0) + 1; });
+  nodes.forEach(n => (n.deg = deg[n.id] || 0));
+  return { nodes, links, byId: Object.fromEntries(nodes.map(n => [n.id, n])) };
+}
+
+// Only what exists in the chosen year, with the chosen filters
+function filtered(S) {
+  const keep = new Set();
+  S.nodes.forEach(n => {
+    const ok = n.kind === 'p' ? visible(n.id)
+      : n.kind === 'b' ? GX.opt.biz && n.b.year <= state.year
+      : GX.opt.families && PEOPLE.some(p => (p.fam === n.fam || (n.fam === 'nuaimi' && p.also)) && visible(p.id));
+    if (ok) keep.add(n.id);
+  });
+  const links = S.links.filter(l => keep.has(nid(l.source)) && keep.has(nid(l.target)) && (l.kind !== 'sp' || state.year >= l.u.year));
+  const nodes = S.nodes.filter(n => keep.has(n.id));
+  // A newcomer starts next to a relative, so the family visibly grows outward
+  nodes.forEach(n => {
+    if (n.x !== undefined) return;
+    const l = links.find(k => k.kind !== 'fam' && (nid(k.source) === n.id || nid(k.target) === n.id));
+    const o = l && S.byId[nid(l.source) === n.id ? nid(l.target) : nid(l.source)];
+    if (o && o.x !== undefined) {
+      n.x = o.x + (Math.random() - 0.5) * 6; n.y = o.y + (Math.random() - 0.5) * 6;
+      if (o.z !== undefined) n.z = o.z + (Math.random() - 0.5) * 6;
+    }
+  });
+  GX.nb = new Map();
+  links.forEach(l => {
+    const a = nid(l.source), b = nid(l.target);
+    if (!GX.nb.has(a)) GX.nb.set(a, new Set());
+    if (!GX.nb.has(b)) GX.nb.set(b, new Set());
+    GX.nb.get(a).add(b); GX.nb.get(b).add(a);
+  });
+  return { nodes, links };
+}
+
+// ---- Cards: photo + name + years instead of a bare dot ----
+const CARD = { p: [104, 32], b: [92, 26] };
+function box(n) {
+  const s = GX.opt.size;
+  if (GX.opt.cards && n.kind !== 'h') { const [w, h] = CARD[n.kind]; return [w * s, h * s]; }
+  const r = (n.kind === 'h' && GX.opt.cards ? 1.7 : 1) * rad(n); return [r * 2, r * 2];
+}
+// Placeholder portrait: head-and-shoulders silhouette on the family colour. A real photo replaces it.
+const AV = new Map();
+function avatar(p) {
+  const key = `${p.id}|${dead(p.id) ? 1 : 0}|${p.photoV || 0}`;
+  if (AV.has(key)) return AV.get(key);
+  const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const g = cv.getContext('2d');
+  g.save(); g.beginPath(); g.arc(S / 2, S / 2, S / 2 - 4, 0, 2 * Math.PI); g.clip();
+  if (p.photo) {
+    const im = p.photo, k = Math.max(S / im.width, S / im.height);
+    g.drawImage(im, (S - im.width * k) / 2, (S - im.height * k) / 2, im.width * k, im.height * k);
+  } else {
+    const col = PALETTE[p.fam], grad = g.createLinearGradient(0, 0, 0, S);
+    grad.addColorStop(0, rgba(col, 0.55)); grad.addColorStop(1, col);
+    g.fillStyle = grad; g.fillRect(0, 0, S, S);
+    g.fillStyle = 'rgba(255,255,255,0.88)';
+    g.beginPath(); g.arc(S / 2, S * 0.4, S * 0.19, 0, 2 * Math.PI); g.fill();
+    g.beginPath(); g.ellipse(S / 2, S * 0.98, S * 0.36, S * 0.33, 0, Math.PI, 2 * Math.PI); g.fill();
+  }
+  if (dead(p.id)) { g.globalCompositeOperation = 'saturation'; g.fillStyle = '#888'; g.fillRect(0, 0, S, S); g.globalCompositeOperation = 'source-over'; g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(0, 0, S, S); }
+  g.restore();
+  g.lineWidth = 7; g.strokeStyle = PALETTE[p.fam]; g.beginPath(); g.arc(S / 2, S / 2, S / 2 - 4, 0, 2 * Math.PI); g.stroke();
+  AV.set(key, cv); return cv;
+}
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+
+// Paint one node centred on (cx, cy). Shared by the 2D canvas and the 3D card textures.
+function paintNode(ctx, n, cx, cy, on) {
+  const c = GX.col, sel = state.sel === n.id, hov = GX.hover === n.id, rtl = state.lang === 'ar';
+  const [w, h] = box(n), s = GX.opt.size;
+  ctx.globalAlpha = on ? 1 : 0.12;
+  if (n.kind === 'h' || !GX.opt.cards) {
+    const r = w / 2;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+    if (n.kind === 'p') { ctx.save(); ctx.clip(); ctx.drawImage(avatar(n.p), cx - r, cy - r, r * 2, r * 2); ctx.restore(); }
+    else if (n.kind === 'b') { ctx.fillStyle = c['--surface-2']; ctx.fill(); ctx.lineWidth = 1.3; ctx.strokeStyle = c['--gold']; ctx.stroke(); }
+    else { ctx.fillStyle = PALETTE[n.fam]; ctx.fill(); }
+    if (hov || sel) { ctx.beginPath(); ctx.arc(cx, cy, r + 1.7, 0, 2 * Math.PI); ctx.lineWidth = 0.9; ctx.strokeStyle = hov ? c['--accent'] : c['--ink']; ctx.stroke(); }
+    ctx.globalAlpha = 1; return;
+  }
+  const x = cx - w / 2, y = cy - h / 2, rad6 = 6 * s;
+  ctx.shadowColor = 'rgba(0,0,0,0.12)'; ctx.shadowBlur = 6 * s; ctx.shadowOffsetY = 1.5 * s;
+  rr(ctx, x, y, w, h, rad6);
+  ctx.fillStyle = n.kind === 'p' && dead(n.id) ? c['--dead-fill'] : c['--surface']; ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.lineWidth = (sel || hov ? 1.6 : 0.6) * s;
+  ctx.strokeStyle = sel || hov ? c['--accent'] : n.kind === 'b' ? c['--gold'] : c['--line'];
+  ctx.stroke();
+  const ar = h / 2 - 4 * s, ax = rtl ? x + w - 4 * s - ar : x + 4 * s + ar;
+  if (n.kind === 'p') ctx.drawImage(avatar(n.p), ax - ar, cy - ar, ar * 2, ar * 2);
+  else {
+    rr(ctx, ax - ar, cy - ar, ar * 2, ar * 2, 3 * s); ctx.fillStyle = c['--gold']; ctx.fill();
+    ctx.fillStyle = c['--surface']; ctx.font = `700 ${ar * 1.1}px "IBM Plex Sans Arabic", sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n.b[state.lang].replace(/^(Al |ال)/, '').charAt(0), ax, cy + s);
+  }
+  const tx = rtl ? ax - ar - 5 * s : ax + ar + 5 * s, maxW = w - ar * 2 - 14 * s;
+  ctx.textAlign = rtl ? 'right' : 'left'; ctx.direction = rtl ? 'rtl' : 'ltr'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = n.kind === 'p' && dead(n.id) ? c['--muted'] : c['--ink'];
+  ctx.font = `600 ${8.6 * s}px "IBM Plex Sans Arabic", sans-serif`;
+  const title = n.kind === 'p' ? full(n.p) : n.b[state.lang];
+  ctx.fillText(title, tx, cy - 1.5 * s, maxW);
+  ctx.font = `${6.6 * s}px "IBM Plex Sans Arabic", sans-serif`;
+  if (n.kind === 'p') {
+    ctx.fillStyle = c['--muted']; ctx.fillText(years(n.p), tx, cy + 8.5 * s, maxW);
+    if (n.p.mi) {
+      const yw = ctx.measureText(years(n.p)).width + 4 * s;
+      ctx.fillStyle = c['--gold']; ctx.fillText(t('marriedIn'), rtl ? tx - yw : tx + yw, cy + 8.5 * s, maxW - yw);
+    }
+    if (BIZ.some(b => b.owners.includes(n.id) && b.year <= state.year)) {
+      ctx.fillStyle = c['--gold']; rr(ctx, rtl ? x + 5 * s : x + w - 10 * s, y + 5 * s, 5 * s, 5 * s, 1.2 * s); ctx.fill();
+    }
+  } else { ctx.fillStyle = c['--muted']; ctx.fillText(`${t('since')} ${n.b.year}`, tx, cy + 7.5 * s, maxW); }
+  ctx.direction = 'ltr'; ctx.globalAlpha = 1;
+}
+
+// Keep cards from overlapping: boxes in 2D, spheres in 3D
+function cardCollide() {
+  let nodes = [];
+  const force = () => {
+    if (!GX.opt.cards) return;
+    for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j], [aw, ah] = box(a), [bw, bh] = box(b);
+      if (a.z !== undefined && b.z !== undefined) {
+        const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, d = Math.hypot(dx, dy, dz) || 1, min = (aw + bw) / 2.6;
+        if (d < min) { const k = ((min - d) / d) * 0.25; a.vx -= dx * k; a.vy -= dy * k; a.vz -= dz * k; b.vx += dx * k; b.vy += dy * k; b.vz += dz * k; }
+        continue;
+      }
+      const dx = b.x - a.x, dy = b.y - a.y, ox = (aw + bw) / 2 + 8 - Math.abs(dx), oy = (ah + bh) / 2 + 8 - Math.abs(dy);
+      if (ox > 0 && oy > 0) {
+        if (ox < oy) { const m = ox * 0.25 * (dx < 0 ? -1 : 1); a.vx -= m; b.vx += m; }
+        else { const m = oy * 0.25 * (dy < 0 ? -1 : 1); a.vy -= m; b.vy += m; }
+      }
+    }
+  };
+  force.initialize = ns => (nodes = ns);
+  return force;
+}
+
+function applyForces(f) {
+  const d = GX.opt.dist * (GX.opt.cards ? 2.6 : 1);
+  f.d3Force('charge').strength(-GX.opt.repel * (GX.opt.cards ? 3 : 1));
+  f.d3Force('link')
+    .distance(l => (l.kind === 'fam' ? d * 1.5 : l.kind === 'sp' ? d * 0.6 : l.kind === 'bz' ? d * 1.1 : d))
+    .strength(l => (l.kind === 'fam' ? (l.target.deg ?? 2) <= 2 ? 0.9 : 0.12 : 0.55));
+  if (!f.d3Force('collide')) f.d3Force('collide', cardCollide());
+  f.d3ReheatSimulation();
+}
+
+function draw2D(n, ctx, k) {
+  const c = GX.col, on = isOn(n.id), [w, h] = box(n);
+  paintNode(ctx, n, n.x, n.y, on);
+  // Labels under dots and family nodes fade in with zoom, like Obsidian's "text fade threshold"
+  if (GX.opt.cards && n.kind !== 'h') return;
+  const fade = Math.min(1, Math.max(0, (k - GX.opt.fade) / 0.9));
+  let a = n.kind === 'h' ? Math.min(1, Math.max(0, (k - GX.opt.fade + 0.7) / 0.9)) : fade;
+  if (n.id === state.sel) a = Math.max(a, 0.9);
+  if (GX.hover) a = on ? 1 : a * 0.1;
+  if (a > 0.02) {
+    const fs = ((n.kind === 'h' ? 12.5 : 11) / k) * Math.min(Math.max(k / 1.8, 1), 1.6);
+    ctx.globalAlpha = a;
+    ctx.font = `${n.kind === 'h' ? 600 : 400} ${fs}px "IBM Plex Sans Arabic", sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = c['--ink'];
+    ctx.fillText(gLabel(n), n.x, n.y + h / 2 + 1.6);
+  }
+  ctx.globalAlpha = 1;
+}
+// Fit on people and businesses; outlying family nodes may sit at the edge
+const fitFilter = n => !GX.opt.cards || n.kind !== 'h';
+function hitArea(n, color, ctx) {
+  const [w, h] = box(n); ctx.fillStyle = color;
+  if (GX.opt.cards && n.kind !== 'h') ctx.fillRect(n.x - w / 2, n.y - h / 2, w, h);
+  else { ctx.beginPath(); ctx.arc(n.x, n.y, w / 2 + 2, 0, 2 * Math.PI); ctx.fill(); }
+}
+// 3D: the same card painted onto a canvas texture
+function node3D(n) {
+  const on = isOn(n.id);
+  if (!GX.opt.cards || n.kind === 'h') return window.Tree3D.labelSprite(gLabel(n), GX.col['--ink'], n.kind === 'h' ? 7 : 5, rad(n), on ? 1 : 0.12);
+  const [w, h] = box(n), S = 4, cv = document.createElement('canvas');
+  cv.width = (w + 12) * S; cv.height = (h + 12) * S;
+  const ctx = cv.getContext('2d'); ctx.scale(S, S);
+  paintNode(ctx, n, (w + 12) / 2, (h + 12) / 2, true);
+  return window.Tree3D.canvasSprite(cv, (w + 12) * 1.1, (h + 12) * 1.1, on ? 1 : 0.15);
+}
+
+function mountGraph2D() {
+  GX.s2 = makeStore();
+  const f = (GX.f2 = new ForceGraph(g2El)
+    .backgroundColor(GX.col['--surface-2'])
+    .nodeId('id').nodeLabel(() => '')
+    .nodeCanvasObject(draw2D)
+    .nodePointerAreaPaint(hitArea)
+    .linkColor(l => (isHiLink(l) ? GX.col['--accent'] : rgba(GX.col['--line-strong'], GX.hover ? 0.1 : 0.5)))
+    .linkWidth(l => (isHiLink(l) ? 1.6 : 0.8))
+    .autoPauseRedraw(false).cooldownTime(7000).d3VelocityDecay(0.32)
+    .onNodeHover(n => { GX.hover = n ? n.id : null; g2El.style.cursor = n ? 'pointer' : ''; })
+    .onNodeClick(n => { if (n.kind === 'p') select(n.id); f.centerAt(n.x, n.y, 600); f.zoom(Math.max(f.zoom(), 3), 600); }));
+  applyForces(f);
+  GX.sig = ''; graphSync();
+  sizeGraph();
+  setTimeout(() => f.zoomToFit(700, 50, fitFilter), 1600);
+}
+
+function mountGraph3D() {
+  if (!window.Tree3D?.labelSprite || !window.ForceGraph3D) return false;
+  GX.s3 = makeStore();
+  const f = (GX.f3 = new ForceGraph3D(g3El, { controlType: 'orbit' })
+    .backgroundColor(GX.col['--surface-2']).showNavInfo(false)
+    .nodeId('id').nodeLabel(() => '')
+    .nodeRelSize(1).nodeVal(n => rad(n) ** 3).nodeResolution(16).nodeOpacity(0.95)
+    .nodeColor(n => { const c = n.kind === 'b' ? GX.col['--gold'] : PALETTE[n.fam]; return isOn(n.id) ? c : rgba(c, 0.12); })
+    .nodeThreeObjectExtend(n => !GX.opt.cards || n.kind === 'h')
+    .nodeThreeObject(node3D)
+    .linkColor(l => (isHiLink(l) ? GX.col['--accent'] : GX.col['--line-strong']))
+    .linkOpacity(0.45).linkWidth(l => (isHiLink(l) ? 0.8 : 0))
+    .onNodeHover(n => { GX.hover = n ? n.id : null; g3El.style.cursor = n ? 'pointer' : ''; restyle3D(); })
+    .onNodeClick(n => { if (n.kind === 'p') select(n.id); fly3D(n); }));
+  applyForces(f);
+  GX.sig = ''; graphSync();
+  sizeGraph();
+  return true;
+}
+function restyle3D() {
+  const f = GX.f3; if (!f) return;
+  f.nodeColor(f.nodeColor()).linkColor(f.linkColor()).linkWidth(f.linkWidth()).nodeThreeObjectExtend(f.nodeThreeObjectExtend()).nodeThreeObject(f.nodeThreeObject());
+}
+function fly3D(n) {
+  const h = Math.hypot(n.x, n.y, n.z) || 1, r = 1 + 70 / h;
+  GX.f3.cameraPosition({ x: n.x * r, y: n.y * r, z: n.z * r }, n, 900);
+}
+function sizeGraph() {
+  const r = graphEl.getBoundingClientRect(); if (!r.width) return;
+  GX.f2?.width(r.width).height(r.height);
+  GX.f3?.width(r.width).height(r.height);
+}
+new ResizeObserver(sizeGraph).observe(graphEl);
+
+function graphSync(force) {
+  if (state.view !== 'graph') return;
+  const f = GX.mode === '2d' ? GX.f2 : GX.f3, S = GX.mode === '2d' ? GX.s2 : GX.s3;
+  if (!f) return;
+  const d = filtered(S), sig = `${GX.mode}|${d.nodes.length}|${d.links.length}`;
+  if (force || sig !== GX.sig) { GX.sig = sig; f.graphData(d); }
+  if (GX.mode === '3d') restyle3D();
+}
+function setGraphMode(m) {
+  if (m === '3d' && !GX.f3 && !mountGraph3D()) { notice.textContent = t('noGL'); notice.hidden = false; setTimeout(() => (notice.hidden = true), 4000); return; }
+  GX.mode = m;
+  g2El.hidden = m !== '2d'; g3El.hidden = m !== '3d';
+  document.getElementById('g2').setAttribute('aria-pressed', m === '2d');
+  document.getElementById('g3').setAttribute('aria-pressed', m === '3d');
+  GX.f2?.pauseAnimation?.(); GX.f3?.pauseAnimation?.();
+  (m === '2d' ? GX.f2 : GX.f3)?.resumeAnimation?.();
+  sizeGraph(); GX.sig = ''; graphSync(true);
+  if (m === '3d') setTimeout(() => GX.f3.zoomToFit(700, 20, fitFilter), 1800);
+}
+function graphThemeChanged() {
+  readCols();
+  GX.f2?.backgroundColor(GX.col['--surface-2']);
+  if (GX.f3) { GX.f3.backgroundColor(GX.col['--surface-2']); restyle3D(); }
+  if (MX.me) MX.me.changeTheme(mindTheme());
+}
+document.getElementById('g2').addEventListener('click', () => setGraphMode('2d'));
+document.getElementById('g3').addEventListener('click', () => setGraphMode('3d'));
+const bindRange = (id, key, after) => document.getElementById(id).addEventListener('input', e => { GX.opt[key] = +e.target.value; after(); });
+const reforce = () => { [GX.f2, GX.f3].forEach(f => f && applyForces(f)); };
+bindRange('oFade', 'fade', () => {});
+bindRange('oSize', 'size', () => { GX.f3 && GX.f3.nodeVal(GX.f3.nodeVal()); restyle3D(); reforce(); });
+bindRange('oRepel', 'repel', reforce);
+bindRange('oDist', 'dist', reforce);
+document.getElementById('oFam').addEventListener('change', e => { GX.opt.families = e.target.checked; graphSync(); });
+document.getElementById('oBiz').addEventListener('change', e => { GX.opt.biz = e.target.checked; graphSync(); });
+document.getElementById('oCards').addEventListener('change', e => {
+  GX.opt.cards = e.target.checked; reforce(); restyle3D();
+  setTimeout(() => (GX.mode === '2d' ? GX.f2 : GX.f3)?.zoomToFit(700, 30, fitFilter), 1500);
+});
+document.getElementById('oAnim').addEventListener('click', () => { if (state.playing) playB.click(); setYear(MIN); playB.click(); });
+
+// ---------- Mind map view (Mind Elixir) ----------
+const mindEl = document.getElementById('mindMap');
+const MX = { me: null, mode: 'family' };
+let mseq = 0;
+const mid = (kind, id) => `${kind}_${id}_${++mseq}`;
+const pidOf = nodeId => { const m = /^p_([a-z0-9]+)_\d+$/.exec(nodeId || ''); return m ? m[1] : null; };
+
+function mindTheme() {
+  const c = GX.col;
+  return {
+    name: 'Family', type: isDark() ? 'dark' : 'light',
+    palette: ['#2f9e91', '#c98a2b', '#8e72d8', '#d0627f', '#3e8ed0', '#7da23b', '#cf7440', '#5b6cd8', '#c05bb2', '#8a96a3'],
+    cssVar: {
+      '--root-color': c['--surface'], '--root-bgcolor': c['--accent'], '--root-border-color': 'rgba(0,0,0,0)',
+      '--main-color': c['--ink'], '--main-bgcolor': c['--surface'], '--main-bgcolor-transparent': rgba(c['--surface'], 0.85),
+      '--color': c['--ink'], '--bgcolor': c['--surface-2'], '--selected': c['--accent'], '--accent-color': c['--gold'],
+      '--panel-color': c['--ink'], '--panel-bgcolor': c['--surface'], '--panel-border-color': c['--line'],
+    },
+  };
+}
+const spouseOf = (u, id) => byId[u.a === id ? u.b : u.a];
+function descendantNode(id) {
+  const p = byId[id], node = { id: mid('p', id), topic: cardName(p), tags: [years(p)], children: [] };
+  if (dead(id)) node.style = { color: GX.col['--muted'] };
+  if (p.note) node.tags.push(t('marriedOut'));
+  if (p.also) node.tags.push(`${t('alsoIn')} ${p.also[state.lang]}`);
+  const us = unionsOf(id).filter(uVisible);
+  const kidsOf = u => u.kids.filter(visible).map(descendantNode);
+  if (us.length === 1) { node.tags.push(`⚭ ${full(spouseOf(us[0], id))}`); node.children = kidsOf(us[0]); }
+  else if (us.length > 1) {
+    // Several spouses: one branch per marriage, children under the right mother or father
+    node.children = us.map(u => { const s = spouseOf(u, id); return { id: mid('p', s.id), topic: `⚭ ${full(s)}`, tags: [String(u.year)], children: kidsOf(u) }; });
+  }
+  return node;
+}
+function familyMind() {
+  const u1 = UNIONS[0], founders = `${full(byId[u1.a])} ⚭ ${full(byId[u1.b])}`;
+  const children = uVisible(u1) ? u1.kids.filter(visible).map(descendantNode) : [];
+  const biz = BIZ.filter(b => b.year <= state.year);
+  if (biz.length) children.push({
+    id: mid('g', 'biz'), topic: t('biz'),
+    children: biz.map(b => ({ id: mid('b', b.id), topic: b[state.lang], tags: [String(b.year)],
+      children: b.owners.filter(visible).map(o => ({ id: mid('p', o), topic: full(byId[o]) })) })),
+  });
+  return { id: mid('p', 'k1'), topic: t('famRoot'), tags: [founders], root: true, children };
+}
+function personMind() {
+  const p = byId[state.sel], r = relations(p.id);
+  const leaf = (id, extra) => ({ id: mid('p', id), topic: full(byId[id]), tags: [years(byId[id]), ...(extra ? [extra] : [])], style: dead(id) ? { color: GX.col['--muted'] } : undefined });
+  const groups = [
+    ['parents', r.parents.filter(visible).map(id => leaf(id))],
+    ['spouses', r.spouses.filter(s => visible(s.id) && s.year <= state.year).map(s => leaf(s.id, `⚭ ${s.year}`))],
+    ['children', r.children.filter(visible).map(id => leaf(id))],
+    ['siblings', r.siblings.filter(s => visible(s.id)).map(s => leaf(s.id, s.half ? t('half') : null))],
+    ['biz', r.biz.filter(b => b.year <= state.year).map(b => ({ id: mid('b', b.id), topic: b[state.lang], tags: [String(b.year)] }))],
+  ].filter(([, items]) => items.length);
+  return {
+    id: mid('p', p.id), topic: full(p), tags: [visible(p.id) ? years(p) : `${t('notBorn')} ${state.year}`], root: true,
+    children: groups.map(([k, items]) => ({ id: mid('g', k), topic: t(k), children: items })),
+  };
+}
+const mindData = () => ({ nodeData: MX.mode === 'family' ? familyMind() : personMind() });
+
+function mountMind() {
+  const M = window.MindElixir; if (!M) return false;
+  MX.me = new M.default({
+    el: mindEl, direction: M.SIDE, editable: false, draggable: false, contextMenu: false, toolBar: false,
+    keypress: false, allowUndo: false, theme: mindTheme(),
+  });
+  MX.me.init(mindData());
+  MX.me.bus.addListener('selectNodes', nodes => {
+    const id = pidOf(nodes?.[0]?.id);
+    if (id && id !== state.sel) setTimeout(() => select(id), 0);
+  });
+  return true;
+}
+function mindSync(fit) {
+  if (!MX.me || state.view !== 'mind') return;
+  MX.me.refresh(mindData());
+  if (fit) setTimeout(fitMind, 30);
+}
+function setMindMode(m) {
+  MX.mode = m;
+  document.getElementById('mFam').setAttribute('aria-pressed', m === 'family');
+  document.getElementById('mPer').setAttribute('aria-pressed', m === 'person');
+  mindSync(true);
+}
+document.getElementById('mFam').addEventListener('click', () => setMindMode('family'));
+document.getElementById('mPer').addEventListener('click', () => setMindMode('person'));
+// Fit the whole map into the stage (at most 100%) and centre its content box
+function mindBox() {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  mindEl.querySelectorAll('me-tpc').forEach(e => { const r = e.getBoundingClientRect(); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom); });
+  return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0 };
+}
+function fitMind() {
+  const h = mindEl.getBoundingClientRect(); let b = mindBox(); if (b.w <= 0) return;
+  const k = Math.min(1, MX.me.scaleVal * Math.min((h.width - 48) / b.w, (h.height - 90) / b.h));
+  MX.me.scale(k);
+  b = mindBox();
+  MX.me.move(h.left + h.width / 2 - (b.x0 + b.x1) / 2, h.top + h.height / 2 + 16 - (b.y0 + b.y1) / 2);
+}
+function focusMind() {
+  const el = mindEl.querySelector(`me-tpc[data-nodeid^="mep_${state.sel}_"]`);
+  if (el) MX.me.scrollIntoView(el, true);
+}
+
+// ---------- Panel ----------
+const panel = document.getElementById('panel');
+const chipBtn = (id, extra = '') => `<button class="pl" data-id="${id}">${full(byId[id])}${extra}</button>`;
+function renderPanel() {
+  const p = byId[state.sel], r = relations(p.id), other = state.lang === 'en' ? 'ar' : 'en';
+  const list = (arr, fn) => (arr.length ? arr.map(fn).join('') : '<span class="none">—</span>');
+  const chips = [`<span class="chip">${p.mi ? t('marriedIn') : t('bornIn')}</span>`];
+  if (p.also) chips.push(`<span class="chip gold">${t('alsoIn')} ${p.also[state.lang]}</span>`);
+  if (p.born > state.year) chips.push(`<span class="chip gold">${t('notBorn')} ${state.year}</span>`);
+  else if (dead(p.id)) chips.push(`<span class="chip gold">${t('deceased')}</span>`);
+  panel.innerHTML = `
+    <div class="who">
+      <div class="pic">
+        <img src="${avatar(p).toDataURL()}" alt="" width="64" height="64">
+        <label class="addpic"><input type="file" accept="image/*" id="photoIn">${t('addPhoto')}</label>
+      </div>
+      <div class="whotext">
+        <h2>${full(p)}</h2>
+        <p class="alt" lang="${other}" dir="${other === 'ar' ? 'rtl' : 'ltr'}">${full(p, other)}</p>
+        <p class="yrs">${years(p)}</p>
+      </div>
+    </div>
+    <div class="chips" style="margin:0">${chips.join('')}</div>
+    ${p.note ? `<p class="none" style="margin:0">${p.note[state.lang]}</p>` : ''}
+    <dl>
+      <div><dt>${t('parents')}</dt><dd>${list(r.parents, id => chipBtn(id))}</dd></div>
+      <div><dt>${t('spouses')}</dt><dd>${list(r.spouses, s => chipBtn(s.id, ` <small>${s.year}</small>`))}</dd></div>
+      <div><dt>${t('children')}</dt><dd>${list(r.children, id => chipBtn(id))}</dd></div>
+      <div><dt>${t('siblings')}</dt><dd>${list(r.siblings, s => chipBtn(s.id, s.half ? ` <small>${t('half')}</small>` : ''))}</dd></div>
+      <div><dt>${t('biz')}</dt><dd>${list(r.biz, b => `<span class="pl">${b[state.lang]} <small>${b.year}</small></span>`)}</dd></div>
+    </dl>
+    <p class="fine">${t('derived')}</p>`;
+}
+panel.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) { select(b.dataset.id); focusSel(); } });
+// Try a real photo: it is read in the browser and kept only in memory for this page
+panel.addEventListener('change', e => {
+  if (e.target.id !== 'photoIn' || !e.target.files[0]) return;
+  const p = byId[state.sel], rd = new FileReader();
+  rd.onload = () => { const im = new Image(); im.onload = () => { p.photo = im; p.photoV = (p.photoV || 0) + 1; renderPanel(); restyle3D(); }; im.src = rd.result; };
+  rd.readAsDataURL(e.target.files[0]);
+});
+
+// ---------- Time ----------
+const EVENTS = [
+  ...PEOPLE.map(p => ({ y: p.born, k: 'b', p })),
+  ...PEOPLE.filter(p => p.died).map(p => ({ y: p.died, k: 'd', p })),
+  ...UNIONS.map(u => ({ y: u.year, k: 'm', u })),
+  ...BIZ.map(b => ({ y: b.year, k: 'z', b })),
+].sort((a, b) => a.y - b.y);
+const yr = document.getElementById('yr'), yrOut = document.getElementById('yrOut');
+const MIN = +yr.min, MAX = +yr.max;
+document.getElementById('ticks').innerHTML = EVENTS.filter(e => e.y >= MIN).map(e =>
+  `<span class="tick ${e.k}" style="inset-inline-start:calc(${((e.y - MIN) / (MAX - MIN)) * 100}% - 1px)"></span>`).join('');
+function eventText(e) {
+  const L_ = T[state.lang];
+  if (e.k === 'b') return L_.born(full(e.p), e.p);
+  if (e.k === 'd') return L_.died(full(e.p), e.p);
+  if (e.k === 'm') return L_.married(byId[e.u.a][state.lang], byId[e.u.b][state.lang]);
+  return L_.founded(e.b[state.lang]);
+}
+function renderStats() {
+  const alive = PEOPLE.filter(p => visible(p.id) && !dead(p.id)).length;
+  const last = [...EVENTS].reverse().find(e => e.y <= state.year);
+  document.getElementById('stats').innerHTML =
+    `<strong>${alive}</strong> ${t('alive')} ${state.year}${last ? ` · ${t('last')}: <strong>${eventText(last)}</strong> (${last.y})` : ''}`;
+}
+function setYear(y) {
+  state.year = y; yr.value = y; yrOut.textContent = y; render2D(); renderPanel(); renderStats();
+  graphSync(); mindSync();
+}
+yr.addEventListener('input', () => setYear(+yr.value));
+const playB = document.getElementById('playB');
+const ICON_PLAY = '<svg class="tri" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/></svg>';
+let timer = null;
+function setPlayIcon() { playB.innerHTML = state.playing ? ICON_PAUSE : ICON_PLAY; playB.setAttribute('aria-label', state.playing ? t('pause') : t('play')); }
+playB.addEventListener('click', () => {
+  state.playing = !state.playing; setPlayIcon();
+  if (state.playing) {
+    if (state.year >= MAX) setYear(MIN);
+    timer = setInterval(() => { if (state.year >= MAX) { state.playing = false; clearInterval(timer); setPlayIcon(); return; } setYear(state.year + 1); }, 110);
+  } else clearInterval(timer);
+});
+
+// ---------- Language ----------
+function applyI18n() {
+  document.querySelectorAll('[data-t]').forEach(n => { n.textContent = t(n.dataset.t); });
+  document.getElementById('notes').innerHTML = t('notes').map(s => `<li>${s}</li>`).join('');
+  document.getElementById('legend').innerHTML = [['lb', 'var(--accent)'], ['lm', 'var(--gold)'], ['ld', 'var(--line-strong)'], ['lz', 'var(--ink)']]
+    .map(([k, c]) => `<span><i style="background:${c}"></i>${t(k)}</span>`).join('');
+  document.getElementById('hint').textContent = t(HINTS[state.view]);
+  document.title = t('title');
+  setPlayIcon();
+}
+function tweenMirror(to) {
+  const from = state.mirror, t0 = performance.now(), D = reduced ? 0 : 650;
+  const step = now => {
+    const k = D ? Math.min(1, (now - t0) / D) : 1, e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    state.mirror = from + (to - from) * e; render2D(); if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function setLang(l) {
+  if (l === state.lang) return;
+  state.lang = l; app.dir = l === 'ar' ? 'rtl' : 'ltr'; app.lang = l;
+  document.getElementById('lEn').setAttribute('aria-pressed', l === 'en');
+  document.getElementById('lAr').setAttribute('aria-pressed', l === 'ar');
+  applyI18n(); if (B) { texts2D(); tweenMirror(l === 'ar' ? 1 : 0); renderPanel(); renderStats(); }
+  graphSync(); mindSync();
+  window.Tree3D?.refresh();
+}
+document.getElementById('lEn').addEventListener('click', () => setLang('en'));
+document.getElementById('lAr').addEventListener('click', () => setLang('ar'));
+
+// ---------- Selection, views, tools ----------
+function select(id) {
+  state.sel = id; render2D(); renderPanel(); window.Tree3D?.refresh();
+  if (GX.mode === '3d') restyle3D();
+  if (MX.mode === 'person') mindSync(true);
+}
+function focusSel() {
+  if (state.view === '2d') focus2D(state.sel);
+  else if (state.view === '3d') window.Tree3D?.focus(state.sel);
+  else if (state.view === 'graph') {
+    const n = (GX.mode === '2d' ? GX.s2 : GX.s3)?.byId[state.sel]; if (!n || n.x === undefined) return;
+    if (GX.mode === '2d') { GX.f2.centerAt(n.x, n.y, 600); GX.f2.zoom(Math.max(GX.f2.zoom(), 3), 600); } else fly3D(n);
+  } else focusMind();
+}
+const notice = document.getElementById('notice');
+const VIEWS = { '2d': 'v2d', '3d': 'v3d', graph: 'vGraph', mind: 'vMind' };
+function setView(v) {
+  if (!B) return;
+  if (v === '3d' && (!window.Tree3D || !window.Tree3D.mount(document.getElementById('view3d')))) {
+    notice.textContent = t('noGL'); notice.hidden = false; setTimeout(() => (notice.hidden = true), 4000); return;
+  }
+  if ((v === 'graph' && !window.ForceGraph) || (v === 'mind' && !window.MindElixir)) { notice.textContent = t('noLib'); notice.hidden = false; setTimeout(() => (notice.hidden = true), 4000); return; }
+  state.view = v;
+  svg.toggleAttribute('hidden', v !== '2d'); graphEl.hidden = v !== 'graph'; document.getElementById('mindView').hidden = v !== 'mind';
+  document.getElementById('view3d').hidden = v !== '3d';
+  Object.entries(VIEWS).forEach(([k, id]) => document.getElementById(id).setAttribute('aria-pressed', k === v));
+  document.getElementById('hint').textContent = t(HINTS[v]);
+  v === '3d' ? window.Tree3D.start() : window.Tree3D?.stop();
+  if (v === 'graph') { if (!GX.f2) mountGraph2D(); else { sizeGraph(); GX.sig = ''; graphSync(true); } }
+  if (v === 'mind') { if (!MX.me) { mountMind(); setTimeout(fitMind, 50); } else mindSync(true); }
+}
+Object.entries(VIEWS).forEach(([k, id]) => document.getElementById(id).addEventListener('click', () => setView(k)));
+function zoomBy(f) {
+  if (state.view === '2d') pzT.zoomCenter(f);
+  else if (state.view === '3d') window.Tree3D.zoom(1 / f);
+  else if (state.view === 'graph') {
+    if (GX.mode === '2d') GX.f2.zoom(GX.f2.zoom() * f, 250);
+    else { const c = GX.f3.cameraPosition(); GX.f3.cameraPosition({ x: c.x / f, y: c.y / f, z: c.z / f }, undefined, 250); }
+  } else MX.me.scale(MX.me.scaleVal * f);
+}
+document.getElementById('zIn').addEventListener('click', () => zoomBy(1.25));
+document.getElementById('zOut').addEventListener('click', () => zoomBy(0.8));
+document.getElementById('fitB').addEventListener('click', () => {
+  if (state.view === '2d') fit2D(); else if (state.view === '3d') window.Tree3D.fit();
+  else if (state.view === 'graph') (GX.mode === '2d' ? GX.f2 : GX.f3).zoomToFit(500, 30, fitFilter);
+  else fitMind();
+});
+document.getElementById('focB').addEventListener('click', focusSel);
+
+// Shared API for the 3D module
+window.graphThemeChanged = graphThemeChanged;
+window.APP = { state, PEOPLE, UNIONS, BIZ, byId, L, CW, CH, pos, visible, dead, uVisible, cardName, years, select, get B() { return B; } };
+
+// ---------- Boot ----------
+readCols();
+applyI18n();
+setYear(state.year);
+try {
+  new ELK().layout(buildGraph()).then(res => {
+    res.children.forEach(n => (L[n.id] = { x: n.x + n.width / 2, y: n.y + n.height / 2 }));
+    const xs = Object.values(L).map(n => n.x), ys = Object.values(L).map(n => n.y);
+    B = { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
+    build2D(); render2D(); fit2D(); renderPanel();
+    new ResizeObserver(() => state.view === '2d' && fit2D()).observe(svg);
+  });
+} catch (err) { notice.textContent = t('noElk'); notice.hidden = false; }
+</script>
+
+<script type="module">
+// One three.js copy for both 3D views: 3d-force-graph's ESM build imports this exact URL too
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/+esm';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/controls/OrbitControls.js/+esm';
+import ForceGraph3D from 'https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.1/+esm';
+window.ForceGraph3D = ForceGraph3D;
+
+const A = window.APP, S = 0.1, YS = 1.35;
+let renderer, scene, camera, controls, host, lines, lineArr, raf = 0, fly = null, ready = false;
+const sprites = {}, unionDots = {}, plates = [];
+const edges = [];
+const css = n => getComputedStyle(document.getElementById('app')).getPropertyValue(n).trim();
+
+function to3(id) {
+  const q = A.pos(id), B = A.B, p = A.byId[id];
+  const z = p ? (p.mi ? 7 : 0) : 3.5;
+  return new THREE.Vector3((q.x - (B.minX + B.maxX) / 2) * S, -(q.y - (B.minY + B.maxY) / 2) * S * YS, z);
+}
+
+function cardTexture(p) {
+  const w = A.CW * 4, h = A.CH * 4, c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'), sel = A.state.sel === p.id, rtl = A.state.lang === 'ar';
+  g.fillStyle = css('--surface'); g.strokeStyle = sel ? css('--accent') : css('--line'); g.lineWidth = sel ? 10 : 4;
+  g.beginPath(); g.roundRect(5, 5, w - 10, h - 10, 34); g.fill(); g.stroke();
+  g.textAlign = 'center'; g.direction = rtl ? 'rtl' : 'ltr';
+  g.fillStyle = css('--ink'); g.font = `600 50px "IBM Plex Sans Arabic", sans-serif`; g.fillText(A.cardName(p), w / 2, 92, w - 40);
+  g.fillStyle = p.mi ? css('--gold') : css('--muted'); g.font = `42px "IBM Plex Mono", monospace`; g.direction = 'ltr'; g.fillText(A.years(p), w / 2, 162);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; return tex;
+}
+
+function build() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(42, 1, 0.5, 2000);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxDistance = 600; controls.minDistance = 8;
+  A.PEOPLE.forEach(p => {
+    const m = new THREE.SpriteMaterial({ map: cardTexture(p), transparent: true, depthWrite: false });
+    const s = new THREE.Sprite(m); s.scale.set(A.CW * S, A.CH * S, 1); s.userData.id = p.id; scene.add(s); sprites[p.id] = s;
+  });
+  const dotGeo = new THREE.SphereGeometry(0.6, 16, 12);
+  A.UNIONS.forEach(u => {
+    const d = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: css('--gold') })); scene.add(d); unionDots[u.id] = d;
+    edges.push({ a: u.a, b: u.id, vis: () => A.uVisible(u) }, { a: u.b, b: u.id, vis: () => A.uVisible(u) });
+    u.kids.forEach(k => edges.push({ a: u.id, b: k, vis: () => A.uVisible(u) && A.visible(k) }));
+  });
+  lineArr = new Float32Array(edges.length * 6);
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lineArr, 3));
+  lines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: css('--line-strong'), transparent: true, opacity: 0.85 }));
+  scene.add(lines);
+  // One disc per generation row of people
+  const B = A.B, rows = [...new Set(A.PEOPLE.map(p => Math.round(A.L[p.id].y)))].sort((a, b) => a - b);
+  const rad = ((B.maxX - B.minX) * S) / 2 + 14;
+  rows.forEach(y => {
+    const m = new THREE.Mesh(new THREE.CircleGeometry(rad, 64), new THREE.MeshBasicMaterial({ color: css('--accent'), transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2; m.position.y = -(y - (B.minY + B.maxY) / 2) * S * YS - 3.4; m.userData.ids = A.PEOPLE.filter(p => Math.round(A.L[p.id].y) === y).map(p => p.id);
+    scene.add(m); plates.push(m);
+  });
+}
+
+function frame() {
+  A.PEOPLE.forEach(p => {
+    const s = sprites[p.id]; s.position.copy(to3(p.id)); s.visible = A.visible(p.id);
+    s.material.opacity = A.dead(p.id) ? 0.45 : 1;
+  });
+  A.UNIONS.forEach(u => { const d = unionDots[u.id]; d.position.copy(to3(u.id)); d.visible = A.uVisible(u); });
+  edges.forEach((e, i) => {
+    const a = to3(e.a), b = e.vis() ? to3(e.b) : a;
+    if (A.byId[e.a]) a.y -= A.CH * S / 2;
+    if (A.byId[e.b] && e.vis()) b.y += A.CH * S / 2;
+    lineArr.set([a.x, a.y, a.z, e.vis() ? b.x : a.x, e.vis() ? b.y : a.y, e.vis() ? b.z : a.z], i * 6);
+  });
+  lines.geometry.attributes.position.needsUpdate = true;
+  plates.forEach(m => (m.visible = m.userData.ids.some(A.visible)));
+  if (fly) {
+    const k = Math.min(1, (performance.now() - fly.t0) / fly.d), e = 1 - Math.pow(1 - k, 3);
+    controls.target.lerpVectors(fly.ft, fly.tt, e); camera.position.lerpVectors(fly.fc, fly.tc, e);
+    if (k >= 1) fly = null;
+  }
+  controls.update(); renderer.render(scene, camera);
+  raf = requestAnimationFrame(frame);
+}
+
+function resize() {
+  const r = host.getBoundingClientRect(); if (!r.width) return;
+  renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
+}
+function fitView(animate = true) {
+  const B = A.B, W = (B.maxX - B.minX + A.CW) * S, H = (B.maxY - B.minY + A.CH) * S * YS;
+  const fov = (camera.fov * Math.PI) / 180, dist = Math.max(H / 2 / Math.tan(fov / 2), W / 2 / Math.tan(fov / 2) / camera.aspect) * 1.15;
+  const tt = new THREE.Vector3(0, 0, 0), tc = new THREE.Vector3(W * 0.18, H * 0.22, dist);
+  if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) { controls.target.copy(tt); camera.position.copy(tc); return; }
+  fly = { t0: performance.now(), d: 700, ft: controls.target.clone(), tt, fc: camera.position.clone(), tc };
+}
+function focus(id) {
+  const tt = to3(id), dir = camera.position.clone().sub(controls.target).normalize();
+  const tc = tt.clone().add(dir.multiplyScalar(32));
+  fly = { t0: performance.now(), d: matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 750, ft: controls.target.clone(), tt, fc: camera.position.clone(), tc };
+}
+
+let down = null;
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function onDown(e) { down = { x: e.clientX, y: e.clientY }; }
+function onUp(e) {
+  if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) { down = null; return; }
+  down = null;
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(Object.values(sprites).filter(s => s.visible))[0];
+  if (hit) { A.select(hit.object.userData.id); focus(hit.object.userData.id); }
+}
+
+function refresh() {
+  if (!ready) return;
+  A.PEOPLE.forEach(p => { const m = sprites[p.id].material; m.map.dispose(); m.map = cardTexture(p); m.needsUpdate = true; });
+  lines.material.color.set(css('--line-strong'));
+  Object.values(unionDots).forEach(d => d.material.color.set(css('--gold')));
+  plates.forEach(m => m.material.color.set(css('--accent')));
+}
+
+window.Tree3D = {
+  mount(el) {
+    if (ready) return true;
+    if (!A.B) return false;
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch { return false; }
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    host = el; el.appendChild(renderer.domElement);
+    build(); ready = true;
+    renderer.domElement.addEventListener('pointerdown', onDown);
+    renderer.domElement.addEventListener('pointerup', onUp);
+    new ResizeObserver(resize).observe(el);
+    resize(); fitView(false);
+    document.fonts.ready.then(refresh);
+    return true;
+  },
+  start() { if (ready && !raf) { resize(); raf = requestAnimationFrame(frame); } },
+  stop() { cancelAnimationFrame(raf); raf = 0; },
+  refresh, focus, fit: () => fitView(true),
+  // Any painted canvas as a camera-facing sprite (cards in the 3D graph)
+  canvasSprite(cv, w, h, opacity = 1) {
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity }));
+    s.scale.set(w, h, 1); return s;
+  },
+  // Text label for the 3D graph's nodes, drawn on a canvas so Arabic letters join correctly
+  labelSprite(text, color, h, r, opacity = 1) {
+    const fs = 64, pad = 10, c = document.createElement('canvas'), g = c.getContext('2d');
+    const font = `500 ${fs}px "IBM Plex Sans Arabic", sans-serif`;
+    g.font = font; c.width = Math.ceil(g.measureText(text).width) + pad * 2; c.height = fs + pad * 2;
+    g.font = font; g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, c.width / 2, c.height / 2);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity }));
+    s.scale.set((h * c.width) / c.height, h, 1); s.position.y = -(r + h * 0.75); return s;
+  },
+  zoom(f) { const off = camera.position.clone().sub(controls.target).multiplyScalar(f); camera.position.copy(controls.target).add(off); },
+};
+const themeChanged = () => { refresh(); window.graphThemeChanged?.(); };
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeChanged);
+new MutationObserver(themeChanged).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+</script>

@@ -1,0 +1,52 @@
+{
+  "kicker": "نظرة عامة على العائلة",
+  "surname": "اسم العائلة",
+  "nativePlace": "الموطن الأصلي",
+  "stats": {
+    "people": "الأفراد",
+    "living": "الأحياء",
+    "generations": "الأجيال",
+    "businesses": "الأعمال",
+    "marriedIn": "بالمصاهرة",
+    "peopleHint": "بالنسب والمصاهرة",
+    "livingHint": "{{deceased}} رحمهم الله",
+    "generationsHint": "منذ أقدم جد",
+    "businessesHint": "{{active}} قائمة",
+    "marriedInHint": "انضموا بالزواج"
+  },
+  "generations": {
+    "title": "الأفراد في كل جيل",
+    "subtitle": "كل عمود جيل واحد، والأقدم أولًا.",
+    "label": "ج{{n}}",
+    "tooltip": "الجيل {{n}}: {{count}}",
+    "table": "أعداد الأجيال"
+  },
+  "birthdays": {
+    "title": "أعياد الميلاد القادمة",
+    "empty": "لا يوجد فرد حي مسجّل بتاريخ ميلاد كامل.",
+    "turns": "يبلغ {{age}}"
+  },
+  "recent": {
+    "title": "أحدث الإضافات",
+    "added": "أُضيف {{when}}",
+    "born": "مواليد {{year}}",
+    "empty": "لا يوجد أفراد بعد."
+  },
+  "oldest": {
+    "title": "أكبر الأحياء سنًّا",
+    "born": "مواليد {{date}}",
+    "empty": "لا يوجد فرد حي مسجّل بسنة ميلاد."
+  },
+  "openTree": {
+    "title": "افتح الشجرة",
+    "subtitle": "ست طرق لرؤية العائلة نفسها."
+  },
+  "businesses": {
+    "title": "أعمال العائلة",
+    "empty": "لا توجد أعمال مسجّلة بعد.",
+    "since": "منذ {{year}}",
+    "ACTIVE": "قائمة",
+    "CLOSED": "مغلقة"
+  },
+  "emptyFamily": "لا يوجد أفراد في هذه العائلة بعد. أضف أول فرد لتبدأ الشجرة."
+}

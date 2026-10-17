@@ -1,0 +1,120 @@
+/* React Flow themed with the app's tokens, so light and dark both follow --ft-*. */
+.ft-flow.react-flow {
+  --xy-background-color: transparent;
+  --xy-background-pattern-color: color-mix(in oklab, var(--ft-foreground) 14%, transparent);
+  --xy-edge-stroke: color-mix(in oklab, var(--ft-muted-foreground) 55%, transparent);
+  --xy-edge-stroke-width: 1.5;
+  --xy-minimap-background-color: var(--ft-glass);
+  --xy-minimap-mask-background-color: color-mix(in oklab, var(--ft-background) 55%, transparent);
+  --xy-minimap-mask-stroke-color: var(--ft-primary);
+  --xy-minimap-mask-stroke-width: 2;
+  --xy-controls-button-background-color: transparent;
+  --xy-controls-button-background-color-hover: var(--ft-accent);
+  --xy-controls-button-color: var(--ft-foreground);
+  --xy-controls-button-color-hover: var(--ft-accent-foreground);
+  --xy-controls-button-border-color: var(--ft-border);
+  --xy-controls-box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --xy-attribution-background-color: transparent;
+}
+
+.ft-flow .react-flow__node {
+  /* Cards draw their own chrome. */
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* React Flow forces direction: ltr on its root; cards follow the page direction. */
+:root[dir="rtl"] .ft-flow .react-flow__node {
+  direction: rtl;
+}
+
+@keyframes ft-card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ft-flow .ft-card,
+.ft-flow .ft-union {
+  animation: ft-card-in 0.35s ease-out;
+}
+
+.ft-flow .react-flow__node:focus-visible {
+  outline: none;
+}
+
+.ft-flow .react-flow__node:focus-visible .ft-card {
+  outline: 2px solid var(--ft-ring);
+  outline-offset: 2px;
+}
+
+.ft-flow .react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+  min-width: 0;
+  min-height: 0;
+  width: 1px;
+  height: 1px;
+  border: 0;
+}
+
+.ft-flow .ft-edge-spouse .react-flow__edge-path {
+  stroke: color-mix(in oklab, var(--ft-gold) 70%, transparent);
+  stroke-width: 1.75;
+}
+
+.ft-flow .ft-edge-sel .react-flow__edge-path {
+  stroke: var(--ft-primary);
+  stroke-width: 2.25;
+}
+
+.ft-flow .react-flow__controls {
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--ft-glass);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid var(--ft-border);
+}
+
+.ft-flow .react-flow__controls-button {
+  width: 32px;
+  height: 32px;
+}
+
+.ft-flow .react-flow__controls-button svg {
+  max-width: 14px;
+  max-height: 14px;
+  fill: currentColor;
+}
+
+.ft-flow .react-flow__controls-button .ft-lucide {
+  fill: none;
+  max-width: 16px;
+  max-height: 16px;
+}
+
+.ft-flow .react-flow__minimap {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--ft-border);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Level of detail: when zoomed far out, cards drop their small print. */
+.ft-flow.ft-lod-low .ft-card-detail {
+  visibility: hidden;
+}
+
+.ft-flow.ft-lod-low .ft-card-name {
+  font-size: 1.05rem;
+}

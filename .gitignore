@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-ssr
+coverage
+.vite
+.tanstack
+test-results
+playwright-report
+*.local
+.DS_Store
+.playwright-mcp

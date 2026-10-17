@@ -1,0 +1,49 @@
+{
+  "scenesLabel": "Scene",
+  "scenes": {
+    "tree": { "name": "Living Tree", "desc": "Lines grow as branches" },
+    "river": { "name": "Time River", "desc": "Each life is a ribbon in time" },
+    "hour": { "name": "Hourglass", "desc": "One person, past above, future below" },
+    "city": { "name": "Heritage City", "desc": "Each line is a tower" },
+    "mandala": { "name": "Girih Mandala", "desc": "Generations as star tiles" },
+    "sky": { "name": "Constellation", "desc": "Generations as orbits" },
+    "glass": { "name": "Glass Strata", "desc": "Generations as plates" }
+  },
+  "hourBack": "Click again to centre the founder",
+  "timeline": "Timeline",
+  "play": "Play the years",
+  "pause": "Pause",
+  "year": "Year",
+  "follow": "Camera follows new births while playing",
+  "spin": "Auto-rotate",
+  "fit": "Overview",
+  "fullscreen": "Full screen",
+  "exitFullscreen": "Exit full screen",
+  "births": "Births per year",
+  "deaths": "Deaths per year",
+  "alive": "{{count}} alive in {{year}}",
+  "hud": {
+    "fps": "fps",
+    "quality": "Quality",
+    "people": "people",
+    "draws": "draw calls",
+    "q0": "Low",
+    "q1": "Medium",
+    "q2": "High"
+  },
+  "generation": "Generation {{n}}",
+  "marriedIn": "Married in",
+  "noGL": {
+    "title": "3D is not available here",
+    "body": "This browser or device can't run WebGL, which the 3D studio needs. The 2D tree shows the same family."
+  },
+  "weak": {
+    "title": "This device may struggle with 3D",
+    "body": "Your device seems to have no graphics acceleration, so the 3D studio may be slow. The 2D tree shows the same family and is smoother.",
+    "tryAnyway": "Try 3D anyway"
+  },
+  "slow": "3D is running slowly on this device. The 2D tree will be smoother.",
+  "open2d": "Open the 2D tree",
+  "dismiss": "Dismiss",
+  "empty": "Add people to this family to see it in 3D."
+}

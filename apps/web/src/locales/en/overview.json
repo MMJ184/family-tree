@@ -1,0 +1,52 @@
+{
+  "kicker": "Family overview",
+  "surname": "Surname",
+  "nativePlace": "Native place",
+  "stats": {
+    "people": "People",
+    "living": "Living",
+    "generations": "Generations",
+    "businesses": "Businesses",
+    "marriedIn": "Married in",
+    "peopleHint": "Born and married in",
+    "livingHint": "{{deceased}} remembered",
+    "generationsHint": "From the earliest ancestor",
+    "businessesHint": "{{active}} active",
+    "marriedInHint": "Joined through marriage"
+  },
+  "generations": {
+    "title": "People per generation",
+    "subtitle": "Each bar is one generation, earliest first.",
+    "label": "G{{n}}",
+    "tooltip": "Generation {{n}}: {{count}}",
+    "table": "Generation counts"
+  },
+  "birthdays": {
+    "title": "Upcoming birthdays",
+    "empty": "No living member has a full birth date on record.",
+    "turns": "Turns {{age}}"
+  },
+  "recent": {
+    "title": "Recent additions",
+    "added": "Added {{when}}",
+    "born": "Born {{year}}",
+    "empty": "No people yet."
+  },
+  "oldest": {
+    "title": "Oldest living member",
+    "born": "Born {{date}}",
+    "empty": "No living member has a birth year on record."
+  },
+  "openTree": {
+    "title": "Open the tree",
+    "subtitle": "Six ways to see the same family."
+  },
+  "businesses": {
+    "title": "Family businesses",
+    "empty": "No businesses recorded yet.",
+    "since": "Since {{year}}",
+    "ACTIVE": "Active",
+    "CLOSED": "Closed"
+  },
+  "emptyFamily": "This family has no people yet. Add the first person to start the tree."
+}

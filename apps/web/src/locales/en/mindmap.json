@@ -1,0 +1,15 @@
+{
+  "modeLabel": "Mind map content",
+  "mode": { "family": "Whole family", "person": "Selected person" },
+  "fit": "Fit the map on screen",
+  "pickPerson": "Pick a person in the map or the search box to map their relatives.",
+  "groups": {
+    "parents": "Parents",
+    "spouses": "Spouses",
+    "children": "Children",
+    "siblings": "Siblings",
+    "businesses": "Businesses"
+  },
+  "half": "Half",
+  "notBorn": "Not born yet in {{year}}"
+}

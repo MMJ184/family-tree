@@ -1,0 +1,20 @@
+{
+  "views": {
+    "tree": "Tree",
+    "person": "Person",
+    "generation": "Generations",
+    "graph": "Graph",
+    "mindmap": "Mind map",
+    "studio": "3D studio"
+  },
+  "viewHints": {
+    "tree": "Classic family tree, ancestors at the top",
+    "person": "One person with parents, spouses, siblings and children",
+    "generation": "Everyone grouped by generation",
+    "graph": "Every relationship as a connected network",
+    "mindmap": "Descendants as a branching mind map",
+    "studio": "Animated 3D scenes of the family over time"
+  },
+  "searchPlaceholder": "Find a person…",
+  "pickPerson": "Pick a person to centre the view on"
+}

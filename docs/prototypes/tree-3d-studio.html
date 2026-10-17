@@ -1,0 +1,1710 @@
+<title>Family Tree 3D Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;700&display=swap">
+<style>
+/* Layout: a full-bleed 3D stage with glass overlays, a time bar that drives every scene, then R&D notes. */
+:root {
+  --bg: #eef1f0; --surface: #ffffff; --surface-2: #f5f7f6; --ink: #142028; --muted: #5a6a74; --line: #d3dcdf;
+  --accent: #0e7f72; --accent-soft: #d6ede9; --gold: #a8690f; --glass: rgba(255, 255, 255, 0.74); --glass-line: rgba(20, 32, 40, 0.12);
+  --stage: #dfe9ea; --shadow: 0 10px 30px rgba(10, 30, 40, 0.14);
+  --f-display: "Reem Kufi", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #070c10; --surface: #0f181e; --surface-2: #0b1318; --ink: #e6eef2; --muted: #8fa2ae; --line: #22323c;
+    --accent: #3fd0bd; --accent-soft: #0f3532; --gold: #e2b05a; --glass: rgba(12, 20, 26, 0.7); --glass-line: rgba(255, 255, 255, 0.1);
+    --stage: #05090c; --shadow: 0 12px 34px rgba(0, 0, 0, 0.45); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #070c10; --surface: #0f181e; --surface-2: #0b1318; --ink: #e6eef2; --muted: #8fa2ae; --line: #22323c;
+  --accent: #3fd0bd; --accent-soft: #0f3532; --gold: #e2b05a; --glass: rgba(12, 20, 26, 0.7); --glass-line: rgba(255, 255, 255, 0.1);
+  --stage: #05090c; --shadow: 0 12px 34px rgba(0, 0, 0, 0.45); color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font: 15px/1.5 var(--f-body); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.app { max-width: 1440px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 40px; display: grid; gap: 14px; }
+
+.bar { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 10px 20px; }
+.bar h1 { margin: 0; font: 700 clamp(22px, 3vw, 30px)/1.1 var(--f-display); text-wrap: balance; }
+.bar p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.bar .right { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; flex-wrap: wrap; padding: 3px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-line);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+
+.stage { position: relative; height: clamp(520px, 74vh, 880px); border-radius: 16px; overflow: hidden; background: var(--stage);
+  border: 1px solid var(--line); box-shadow: var(--shadow); isolation: isolate; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.glass { background: var(--glass); border: 1px solid var(--glass-line); backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border-radius: 14px; box-shadow: var(--shadow); }
+.ov { position: absolute; z-index: 2; }
+.scenes { inset-block-start: 14px; inset-inline-start: 14px; display: grid; gap: 2px; padding: 6px; width: 200px; }
+.scenes button { display: grid; text-align: start; line-height: 1.2; padding: 7px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); }
+.scenes button span { font-size: 14px; font-weight: 600; color: var(--ink); }
+.scenes button small { font-size: 11.5px; }
+.scenes button:hover { background: var(--accent-soft); }
+.scenes button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+.scenes button[aria-pressed="true"] span { color: var(--surface); }
+.search { inset-block-start: 14px; inset-inline-end: 14px; width: min(300px, calc(100% - 28px)); }
+.search input { width: 100%; box-sizing: border-box; border: 1px solid var(--glass-line); background: var(--glass); border-radius: 12px; padding: 9px 12px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.search ul { list-style: none; margin: 6px 0 0; padding: 4px; }
+.search li button { width: 100%; text-align: start; border: 0; background: transparent; padding: 6px 8px; border-radius: 8px; display: flex; gap: 8px; align-items: center; }
+.search li button:hover, .search li button:focus-visible { background: var(--accent-soft); }
+.search li img { width: 26px; height: 26px; border-radius: 50%; }
+.search li small { color: var(--muted); font-family: var(--f-mono); font-size: 11px; }
+.card { inset-block-end: 14px; inset-inline-end: 14px; width: min(310px, calc(100% - 28px)); padding: 14px; display: grid; gap: 10px; }
+.card .who { display: flex; gap: 12px; align-items: center; }
+.card img { width: 58px; height: 58px; border-radius: 50%; flex: none; }
+.card h2 { margin: 0; font: 700 18px/1.2 var(--f-display); }
+.card .alt { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.card .yrs { margin: 2px 0 0; font: 12px var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.chip.gold { background: transparent; border: 1px solid var(--gold); color: var(--gold); }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.stats div { background: var(--surface-2); border-radius: 10px; padding: 6px 8px; }
+.stats b { display: block; font: 600 17px var(--f-mono); font-variant-numeric: tabular-nums; }
+.stats span { font-size: 11px; color: var(--muted); }
+.card .row { display: flex; gap: 8px; }
+.card .row button { flex: 1; border: 1px solid var(--line); background: var(--surface); border-radius: 9px; padding: 6px 8px; font-size: 13px; }
+.tip { pointer-events: none; padding: 8px 10px; display: flex; gap: 10px; align-items: center; max-width: 260px; }
+.tip img { width: 40px; height: 40px; border-radius: 50%; }
+.tip b { display: block; font-size: 14px; }
+.tip span { font: 11.5px var(--f-mono); color: var(--muted); }
+.hud { inset-block-end: 14px; inset-inline-start: 14px; padding: 6px 10px; font: 12px/1.5 var(--f-body); font-variant-numeric: tabular-nums; color: var(--muted); display: grid; gap: 1px; min-width: 150px; }
+.hud b { color: var(--ink); font-weight: 500; }
+.hud .q { display: inline-block; padding: 0 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+.tools { inset-block-start: 74px; inset-inline-end: 14px; display: flex; gap: 6px; }
+.tools button { border: 1px solid var(--glass-line); background: var(--glass); border-radius: 10px; padding: 6px 10px; font-size: 13px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.tools button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+.lbl { position: absolute; left: 0; top: 0; display: grid; justify-items: center; padding: 2px 9px 3px; border-radius: 9px; white-space: nowrap;
+  background: var(--glass); border: 1px solid color-mix(in srgb, var(--fam, var(--accent)) 55%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: opacity .25s ease; will-change: transform; }
+.lbl b { font-size: 12px; font-weight: 600; line-height: 1.25; color: var(--ink); }
+.lbl span { font: 10.5px/1.2 var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.lbl.dim { opacity: .3; }
+/* Year ranges always read left to right, even inside Arabic text */
+.lbl span, .card .yrs, .search small, .yr-ltr { direction: ltr; unicode-bidi: isolate; }
+.lbl.pri { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.notice { inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; }
+.notice p { max-width: 420px; }
+
+.time { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 16px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--line); }
+.play { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--accent); color: var(--surface); display: grid; place-items: center; }
+.play svg { width: 18px; height: 18px; fill: currentColor; }
+[dir="rtl"] .play svg.tri { transform: scaleX(-1); }
+.track { position: relative; min-width: 0; display: grid; gap: 2px; }
+.track canvas { width: 100%; height: 34px; display: block; }
+[dir="rtl"] .track canvas { transform: scaleX(-1); }
+input[type="range"] { width: 100%; margin: 0; accent-color: var(--accent); }
+.year { font: 500 28px var(--f-mono); font-variant-numeric: tabular-nums; min-width: 4.2ch; text-align: center; }
+.under { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+.under label { display: inline-flex; gap: 6px; align-items: center; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-inline-end: 6px; vertical-align: -1px; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.notes section { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; min-width: 0; }
+.notes h3 { margin: 0 0 8px; font: 700 16px var(--f-display); }
+.notes ul, .notes ol { margin: 0; padding-inline-start: 20px; display: grid; gap: 6px; }
+.notes a { color: var(--accent); }
+.notes b { font-weight: 600; }
+@media (max-width: 720px) {
+  .stage { height: 78vh; }
+  .card { inset-inline: 10px; width: auto; inset-block-end: 10px; }
+  .scenes { inset-inline: 10px; width: auto; display: flex; overflow-x: auto; scrollbar-width: none; inset-block-start: 10px; }
+  .scenes button { flex: none; }
+  .scenes button small { display: none; }
+  .hud { display: none; }
+  .search { inset-block-start: auto; inset-block-end: 14px; inset-inline: 10px; width: auto; }
+  .search:has(~ .card:not([hidden])) { display: none; }
+  .tools { inset-block-start: auto; inset-block-end: 70px; inset-inline-end: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app" id="app" dir="ltr" lang="en">
+  <header class="bar">
+    <div>
+      <h1 data-t="title"></h1>
+      <p data-t="sub"></p>
+    </div>
+    <div class="right">
+      <div class="seg" role="group" data-ta="aSize">
+        <button id="dSample" aria-pressed="true" data-t="dSample"></button>
+        <button id="dStress" aria-pressed="false" data-t="dStress"></button>
+      </div>
+      <div class="seg" role="group" data-ta="aLang">
+        <button id="lEn" aria-pressed="true">English</button>
+        <button id="lAr" aria-pressed="false" lang="ar">عربي</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+    <canvas id="c"></canvas>
+    <nav class="ov scenes glass" data-ta="aScene">
+      <button data-scene="tree" aria-pressed="true"><span data-t="sTree"></span><small data-t="sTreeD"></small></button>
+      <button data-scene="river" aria-pressed="false"><span data-t="sRiver"></span><small data-t="sRiverD"></small></button>
+      <button data-scene="hour" aria-pressed="false"><span data-t="sHour"></span><small data-t="sHourD"></small></button>
+      <button data-scene="city" aria-pressed="false"><span data-t="sCity"></span><small data-t="sCityD"></small></button>
+      <button data-scene="mandala" aria-pressed="false"><span data-t="sMandala"></span><small data-t="sMandalaD"></small></button>
+      <button data-scene="sky" aria-pressed="false"><span data-t="sSky"></span><small data-t="sSkyD"></small></button>
+      <button data-scene="glass" aria-pressed="false"><span data-t="sGlass"></span><small data-t="sGlassD"></small></button>
+    </nav>
+    <div class="ov search">
+      <input id="q" type="search" autocomplete="off" data-tp="search">
+      <ul id="qList" class="glass" hidden></ul>
+    </div>
+    <div class="ov tools">
+      <button id="tFit" data-t="fit"></button>
+      <button id="tSpin" aria-pressed="true" data-t="spin"></button>
+      <button id="tFull" data-t="full"></button>
+    </div>
+    <div class="labels" id="labels" aria-hidden="true"></div>
+    <div class="ov tip glass" id="tip" hidden></div>
+    <aside class="ov card glass" id="card" hidden aria-live="polite"></aside>
+    <div class="ov hud glass" id="hud"></div>
+    <div class="ov notice" id="notice" hidden><p class="glass" style="padding:16px" id="noticeText"></p></div>
+  </main>
+
+  <section class="time" data-ta="aTime">
+    <button class="play" id="play"></button>
+    <div class="track">
+      <canvas id="hist" aria-hidden="true"></canvas>
+      <input type="range" id="yr" min="1900" max="2026" step="1" value="2026">
+    </div>
+    <output class="year" id="yrOut" for="yr">2026</output>
+  </section>
+  <div class="under">
+    <span id="status"></span>
+    <label><input type="checkbox" id="follow" checked> <span data-t="follow"></span></label>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="notes" id="notes"></div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/+esm';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/controls/OrbitControls.js/+esm';
+import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/postprocessing/EffectComposer.js/+esm';
+import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/postprocessing/RenderPass.js/+esm';
+import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/postprocessing/UnrealBloomPass.js/+esm';
+import { OutputPass } from 'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/postprocessing/OutputPass.js/+esm';
+
+// ======================= Data =======================
+const FAM = {
+  mansouri: { en: 'Al Mansouri', ar: 'المنصوري', c: '#2fb3a3' }, kaabi: { en: 'Al Kaabi', ar: 'الكعبي', c: '#d99a3a' },
+  zaabi: { en: 'Al Zaabi', ar: 'الزعابي', c: '#9a7ff0' }, suwaidi: { en: 'Al Suwaidi', ar: 'السويدي', c: '#e26e8f' },
+  mazrouei: { en: 'Al Mazrouei', ar: 'المزروعي', c: '#4d9be0' }, shamsi: { en: 'Al Shamsi', ar: 'الشامسي', c: '#8cbf45' },
+  ketbi: { en: 'Al Ketbi', ar: 'الكتبي', c: '#e5824a' }, hammadi: { en: 'Al Hammadi', ar: 'الحمادي', c: '#6b7cf0' },
+  marri: { en: 'Al Marri', ar: 'المري', c: '#d36ac4' }, nuaimi: { en: 'Al Nuaimi', ar: 'النعيمي', c: '#9aa7b3' },
+};
+const P = (id, en, ar, sex, born, died, fam = 'mansouri', extra = {}) => ({ id, en, ar, sex, born, died, fam, mi: fam !== 'mansouri', ...extra });
+const SAMPLE = {
+  people: [
+    P('k1', 'Khalid', 'خالد', 'M', 1905, 1978), P('f1', 'Fatima', 'فاطمة', 'F', 1910, 1990, 'kaabi'),
+    P('a1', 'Ahmed', 'أحمد', 'M', 1930, 2005), P('ai', 'Aisha', 'عائشة', 'F', 1935, 2018, 'zaabi'), P('no', 'Noura', 'نورة', 'F', 1945, null, 'suwaidi'),
+    P('m1', 'Mariam', 'مريم', 'F', 1933, 2015), P('s1', 'Saeed', 'سعيد', 'M', 1936, 2012), P('sh', 'Shaikha', 'شيخة', 'F', 1940, null, 'mazrouei'),
+    P('ra', 'Rashid', 'راشد', 'M', 1957, null), P('am', 'Amna', 'آمنة', 'F', 1962, null, 'shamsi'), P('he', 'Hessa', 'حصة', 'F', 1960, null),
+    P('om', 'Omar', 'عمر', 'M', 1972, null), P('re', 'Reem', 'ريم', 'F', 1998, null, 'hammadi'),
+    P('su', 'Sultan', 'سلطان', 'M', 1964, null), P('mo', 'Moza', 'موزة', 'F', 1968, null, 'ketbi'), P('la', 'Latifa', 'لطيفة', 'F', 1967, null),
+    P('kh', 'Khalid', 'خالد', 'M', 1986, null), P('da', 'Dana', 'دانة', 'F', 1990, null, 'marri'), P('mh', 'Mohammed', 'محمد', 'M', 1989, null),
+    P('sa', 'Sara', 'سارة', 'F', 1992, null), P('za', 'Zayed', 'زايد', 'M', 2022, null), P('hm', 'Hamdan', 'حمدان', 'M', 1992, null),
+    P('al', 'Alyaa', 'علياء', 'F', 1995, null), P('ft', 'Fatima', 'فاطمة', 'F', 2016, null),
+  ],
+  unions: [
+    { id: 'u1', a: 'k1', b: 'f1', year: 1928, kids: ['a1', 'm1', 's1'] }, { id: 'u2', a: 'a1', b: 'ai', year: 1955, kids: ['ra', 'he'] },
+    { id: 'u3', a: 'a1', b: 'no', year: 1970, kids: ['om'] }, { id: 'u4', a: 's1', b: 'sh', year: 1962, kids: ['su', 'la'] },
+    { id: 'u5', a: 'ra', b: 'am', year: 1984, kids: ['kh', 'mh', 'sa'] }, { id: 'u6', a: 'su', b: 'mo', year: 1990, kids: ['hm', 'al'] },
+    { id: 'u7', a: 'om', b: 're', year: 2020, kids: ['za'] }, { id: 'u8', a: 'kh', b: 'da', year: 2014, kids: ['ft'] },
+  ],
+  biz: [
+    { id: 'b1', en: 'Mansouri Pearling', ar: 'لؤلؤ المنصوري', year: 1950, owners: ['k1'] },
+    { id: 'b2', en: 'Al Mansouri Trading', ar: 'المنصوري للتجارة', year: 1962, owners: ['a1', 's1'] },
+    { id: 'b3', en: 'Mansouri Logistics', ar: 'المنصوري للخدمات اللوجستية', year: 2010, owners: ['kh', 'hm'] },
+  ],
+};
+const MALE = [['Khalid', 'خالد'], ['Ahmed', 'أحمد'], ['Saeed', 'سعيد'], ['Rashid', 'راشد'], ['Omar', 'عمر'], ['Sultan', 'سلطان'], ['Hamdan', 'حمدان'], ['Mohammed', 'محمد'],
+  ['Zayed', 'زايد'], ['Majid', 'ماجد'], ['Faisal', 'فيصل'], ['Saif', 'سيف'], ['Hamad', 'حمد'], ['Ali', 'علي'], ['Yousef', 'يوسف'], ['Abdullah', 'عبدالله']];
+const FEMALE = [['Fatima', 'فاطمة'], ['Aisha', 'عائشة'], ['Mariam', 'مريم'], ['Hessa', 'حصة'], ['Latifa', 'لطيفة'], ['Sara', 'سارة'], ['Alyaa', 'علياء'], ['Moza', 'موزة'],
+  ['Noura', 'نورة'], ['Shaikha', 'شيخة'], ['Amna', 'آمنة'], ['Reem', 'ريم'], ['Dana', 'دانة'], ['Maitha', 'ميثاء'], ['Hind', 'هند'], ['Salama', 'سلامة']];
+function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// A generated 500-person family to test scale (invented names and dates)
+function synthetic(N) {
+  const r = rng(11), pick = a => a[Math.floor(r() * a.length)], people = [], unions = [];
+  const others = Object.keys(FAM).filter(k => k !== 'mansouri' && k !== 'nuaimi');
+  const death = born => (born < 1965 && r() < Math.min(0.97, (2026 - born - 50) / 45) ? Math.min(2025, born + 52 + Math.floor(r() * 38)) : null);
+  const mk = (sex, born, fam) => { const n = pick(sex === 'M' ? MALE : FEMALE); const p = { id: `s${people.length}`, en: n[0], ar: n[1], sex, born, died: death(born), fam, mi: fam !== 'mansouri' }; people.push(p); return p; };
+  const root = mk('M', 1872, 'mansouri'); root.died = 1941;
+  const q = [root];
+  while (q.length && people.length < N) {
+    const p = q.shift();
+    if (p.sex === 'F' && r() < 0.6) continue; // most daughters marry into other families
+    const wed = p.born + 21 + Math.floor(r() * 8); if (wed > 2021) continue;
+    const s = mk(p.sex === 'M' ? 'F' : 'M', p.born + (p.sex === 'M' ? 2 : -3) + Math.floor(r() * 4), pick(others));
+    const u = { id: `u${unions.length}`, a: p.id, b: s.id, year: wed, kids: [] }; unions.push(u);
+    let y = wed; const nk = 2 + Math.floor(r() * 5);
+    for (let i = 0; i < nk && people.length < N; i++) { y += 1 + Math.floor(r() * 3); if (y > 2025) break; const c = mk(r() < 0.55 ? 'M' : 'F', y, 'mansouri'); u.kids.push(c.id); q.push(c); }
+  }
+  return { people, unions, biz: [] };
+}
+
+// ======================= Model =======================
+function buildModel(data) {
+  const byId = {}; data.people.forEach(p => (byId[p.id] = { ...p, kids: [], spouses: [] }));
+  const people = Object.values(byId), parentU = {};
+  data.unions.forEach(u => {
+    u.kids.forEach(k => (parentU[k] = u));
+    byId[u.a].spouses.push({ id: u.b, year: u.year }); byId[u.b].spouses.push({ id: u.a, year: u.year });
+  });
+  people.forEach(p => { const u = parentU[p.id]; p.parents = u ? [u.a, u.b] : []; p.parent = u ? (byId[u.a].mi ? u.b : u.a) : null; });
+  people.forEach(p => { if (p.parent) byId[p.parent].kids.push(p.id); });
+  people.forEach(p => p.kids.sort((a, b) => byId[a].born - byId[b].born));
+  // Every child of every marriage, so a mother who married in still has children (kids above is the born-in line used for layout)
+  people.forEach(p => (p.children = data.unions.filter(u => u.a === p.id || u.b === p.id).flatMap(u => u.kids)));
+  people.forEach(p => { if (p.mi) p.anchor = p.spouses[0]?.id ?? null; });
+  const root = people.find(p => !p.mi && !p.parent);
+  const gen = (id, g) => { const p = byId[id]; p.gen = g; p.kids.forEach(k => gen(k, g + 1)); }; gen(root.id, 0);
+  people.forEach(p => { if (p.mi) p.gen = p.anchor ? byId[p.anchor].gen : 0; });
+  const leaves = id => { const p = byId[id]; p.leaves = p.kids.length ? p.kids.reduce((s, k) => s + leaves(k), 0) : 1; return p.leaves; }; leaves(root.id);
+  const assign = (id, a0, a1) => { const p = byId[id]; p.a0 = a0; p.a1 = a1; p.ang = (a0 + a1) / 2; let a = a0; p.kids.forEach(k => { const w = ((a1 - a0) * byId[k].leaves) / p.leaves; assign(k, a, a + w); a += w; }); };
+  assign(root.id, 0, 1);
+  people.forEach(p => { if (p.mi) p.ang = p.anchor ? byId[p.anchor].ang : 0; });
+  people.forEach((p, i) => (p.idx = i));
+  const maxGen = Math.max(...people.map(p => p.gen));
+  const biz = data.biz.map(b => ({ ...b }));
+  const minYear = Math.min(...people.map(p => p.born));
+  return { people, byId, root, unions: data.unions, maxGen, biz, minYear, n: people.length };
+}
+
+// ======================= Strings =======================
+const T = {
+  en: {
+    title: 'Family Tree 3D Studio', sub: 'Advanced 3D views for the family tree. Sample data is invented.',
+    dSample: 'Sample family (24)', dStress: 'Scale test (≈500)',
+    sTree: 'Living Tree', sTreeD: 'Lines grow as branches', sSky: 'Constellation', sSkyD: 'Generations as orbits', sGlass: 'Glass Strata', sGlassD: 'Generations as plates',
+    sRiver: 'Time River', sRiverD: 'Each life is a ribbon in time', sHour: 'Hourglass', sHourD: 'One person, past above, future below', sCity: 'Heritage City', sCityD: 'Each line is a tower', sMandala: 'Girih Mandala', sMandalaD: 'Generations as star tiles',
+    search: 'Search a name in Arabic or English', fit: 'Overview', spin: 'Auto-rotate', full: 'Full screen',
+    follow: 'Camera follows new births while playing', play: 'Play the years', pause: 'Pause',
+    gen: 'Generation', born: 'Born in this family', mi: 'Married in', deceased: 'Deceased', notBorn: 'Not born yet',
+    desc: 'Descendants', kids: 'Children', spouses: 'Spouses', anc: 'Show ancestors only', clear: 'Clear', focus: 'Fly to',
+    alive: 'alive in', people: 'people', lb: 'Births per year', ld: 'Deaths per year',
+    noGL: "This device can't run WebGL, which the 3D studio needs. Use the 2D tree instead.",
+    hudPeople: 'people', hudDraws: 'draw calls', hudQ: 'quality', qHigh: 'High', qMed: 'Medium', qLow: 'Low',
+    nothing: 'No match. Try another spelling.', fps: 'fps', aSize: 'Family size', aLang: 'Language', aScene: 'Scene', aTime: 'Time',
+  },
+  ar: {
+    title: 'استوديو شجرة العائلة ثلاثي الأبعاد', sub: 'عروض ثلاثية الأبعاد متقدمة لشجرة العائلة. البيانات افتراضية.',
+    dSample: 'عائلة تجريبية (24)', dStress: 'اختبار الحجم (≈500)',
+    sTree: 'الشجرة الحية', sTreeD: 'الأنساب أغصان تنمو', sSky: 'كوكبة النجوم', sSkyD: 'الأجيال مدارات', sGlass: 'طبقات زجاجية', sGlassD: 'الأجيال ألواح',
+    sRiver: 'نهر الزمن', sRiverD: 'كل حياة شريط في الزمن', sHour: 'الساعة الرملية', sHourD: 'شخص واحد: الماضي فوق والمستقبل تحت', sCity: 'مدينة الإرث', sCityD: 'كل نسب برج', sMandala: 'ماندالا الجيرة', sMandalaD: 'الأجيال نجوم مزخرفة',
+    search: 'ابحث عن اسم بالعربية أو الإنجليزية', fit: 'نظرة عامة', spin: 'دوران تلقائي', full: 'ملء الشاشة',
+    follow: 'الكاميرا تتبع المواليد الجدد أثناء التشغيل', play: 'تشغيل السنوات', pause: 'إيقاف',
+    gen: 'الجيل', born: 'من مواليد العائلة', mi: 'انضم بالزواج', deceased: 'متوفى', notBorn: 'لم يولد بعد',
+    desc: 'الذرية', kids: 'الأبناء', spouses: 'الأزواج', anc: 'الأسلاف فقط', clear: 'إلغاء', focus: 'انتقال',
+    alive: 'على قيد الحياة في', people: 'شخصاً', lb: 'المواليد في السنة', ld: 'الوفيات في السنة',
+    noGL: 'هذا الجهاز لا يدعم WebGL المطلوب للعرض ثلاثي الأبعاد. استخدم الشجرة ثنائية الأبعاد.',
+    hudPeople: 'شخص', hudDraws: 'استدعاءات رسم', hudQ: 'الجودة', qHigh: 'عالية', qMed: 'متوسطة', qLow: 'منخفضة',
+    nothing: 'لا توجد نتيجة. جرّب كتابة أخرى.', fps: 'إطار/ث', aSize: 'حجم العائلة', aLang: 'اللغة', aScene: 'المشهد', aTime: 'الزمن',
+  },
+};
+const NOTES = {
+  en: `
+  <section><h3>What the research showed</h3><ul>
+    <li>Most 3D family-tree projects online are force graphs or "family as stars" scenes: <a href="https://frankx.ai/design-lab/family-tree" target="_blank" rel="noopener">Frank X design lab</a> compares 15 styles, from glass cards to a WebGL constellation with orbital rings; <a href="https://discourse.threejs.org/t/family-circles-genealogy-family-relations-modeling/7038" target="_blank" rel="noopener">Family Circles</a> models relations in three.js.</li>
+    <li>Genealogy products still lead with 2D layouts: pedigree, fan and hourglass charts (<a href="https://help-redir.ancestry.com/hc/en-ca/articles/53933302401299-Tree-Layouts-Horizontal-Vertical-and-Fan-Views" target="_blank" rel="noopener">Ancestry tree layouts</a>, <a href="https://progenygenealogy.com/products/family-tree-charts/family-tree-charts-detail/" target="_blank" rel="noopener">Progeny charts</a>). A real 3D tree is rare, which makes it the differentiator.</li>
+    <li>Believable procedural trees sweep tapered tubes along curves with parallel-transport frames (<a href="https://threejs.org/docs/pages/TreeGenerator.html" target="_blank" rel="noopener">three.js TreeGenerator</a>, <a href="https://tympanus.net/codrops/2025/01/27/fractals-to-forests-creating-realistic-3d-trees-with-three-js/" target="_blank" rel="noopener">Codrops: Fractals to Forests</a>).</li>
+    <li>Glow on networks comes from an HDR bloom pass (<a href="https://observablehq.com/d/3880105990319c92" target="_blank" rel="noopener">Observable bloom graph</a>).</li>
+  </ul></section>
+  <section><h3>Seven ways to see one family</h3><ul>
+    <li><b>Living Tree</b>: the founder is the trunk and every line of descent is a real branch. Branch thickness follows the size of that line. Branches grow in the year each person is born, leaves open around living people and fall when someone dies.</li>
+    <li><b>Constellation</b>: each generation is an orbit; light runs along the bloodlines from parent to child; couples share a ring.</li>
+    <li><b>Time River</b>: years run left to right. Every life is a ribbon from birth to death; children branch off their parent's ribbon, people who married in flow in from the side, and a glowing curtain marks the year on the slider.</li>
+    <li><b>Hourglass</b>: one person at the waist, ancestors in the glass above, descendants in the bowl below, siblings around the waist and everyone else on a faint outer ring. Gold sand runs from past to future. Click anyone to put them at the centre.</li>
+    <li><b>Heritage City</b>: each person is a tower whose height is the size of their line. Towers rise in the year of birth, windows go dark at death, light bridges join parents and children, and family businesses are lit shopfronts with signs.</li>
+    <li><b>Girih Mandala</b>: the family as an Islamic eight-point star pattern. The founders are the centre rosette, each generation a ring of enamel and gold tiles joined by gold threads, over a slowly turning girih lattice.</li>
+    <li><b>Glass Strata</b>: each generation is a frosted glass plate (a custom Fresnel glass shader, so the lines behind show through); people stand on pins of light.</li>
+    <li>Switching scene flies every person to their new place. Clicking someone lights their ancestors and descendants and dims the rest. Search handles Arabic spelling variants (أ إ آ ا, ة ه, ى ي).</li>
+  </ul></section>
+  <section><h3>How it is built to scale</h3><ul>
+    <li>All portraits share one texture atlas and draw in <b>one draw call</b> (instanced billboards with a custom shader).</li>
+    <li>All branches are one merged mesh. Growth over time happens in the shader, so playing the years costs nothing on the CPU.</li>
+    <li>Leaves are one instanced mesh; names are a small pool of labels given to the nearest people only.</li>
+    <li>The page watches its own frame rate and steps down from High to Medium to Low (pixel ratio, then bloom). Try <b>Scale test (500)</b> and watch the counter.</li>
+    <li>In the app this maps to react-three-fiber with the same shaders, with real photos packed into the atlas on the server.</li>
+  </ul></section>`,
+  ar: `
+  <section><h3>ما أظهره البحث</h3><ul>
+    <li>معظم مشاريع شجرة العائلة ثلاثية الأبعاد على الإنترنت شبكات قوى أو مشاهد «العائلة كنجوم»: <a href="https://frankx.ai/design-lab/family-tree" target="_blank" rel="noopener">مختبر تصميم Frank X</a> يقارن 15 أسلوباً، و<a href="https://discourse.threejs.org/t/family-circles-genealogy-family-relations-modeling/7038" target="_blank" rel="noopener">Family Circles</a> يبني العلاقات بمكتبة three.js.</li>
+    <li>برامج الأنساب ما زالت تعتمد على مخططات ثنائية الأبعاد مثل المروحة والساعة الرملية (<a href="https://help-redir.ancestry.com/hc/en-ca/articles/53933302401299-Tree-Layouts-Horizontal-Vertical-and-Fan-Views" target="_blank" rel="noopener">Ancestry</a>، <a href="https://progenygenealogy.com/products/family-tree-charts/family-tree-charts-detail/" target="_blank" rel="noopener">Progeny</a>). الشجرة الحقيقية ثلاثية الأبعاد نادرة، وهذا ما يميزنا.</li>
+    <li>الأشجار الإجرائية المقنعة تُبنى بأنابيب مستدقة على منحنيات (<a href="https://threejs.org/docs/pages/TreeGenerator.html" target="_blank" rel="noopener">TreeGenerator</a>، <a href="https://tympanus.net/codrops/2025/01/27/fractals-to-forests-creating-realistic-3d-trees-with-three-js/" target="_blank" rel="noopener">Codrops</a>).</li>
+    <li>التوهج في الشبكات يأتي من مرحلة bloom عالية النطاق (<a href="https://observablehq.com/d/3880105990319c92" target="_blank" rel="noopener">مثال Observable</a>).</li>
+  </ul></section>
+  <section><h3>سبع طرق لرؤية عائلة واحدة</h3><ul>
+    <li><b>الشجرة الحية</b>: المؤسس هو الجذع وكل نسب غصن حقيقي، وسمك الغصن بحسب حجم الذرية. تنمو الأغصان في سنة الميلاد، وتتفتح الأوراق حول الأحياء وتسقط عند الوفاة.</li>
+    <li><b>كوكبة النجوم</b>: كل جيل مدار، والضوء يسري من الوالد إلى الولد، والزوجان يتشاركان حلقة.</li>
+    <li><b>نهر الزمن</b>: السنوات من اليسار إلى اليمين، وكل حياة شريط من الميلاد إلى الوفاة. يتفرع الأبناء من شريط الوالد، ويدخل المنضمون بالزواج من الجانب، وستارة مضيئة تحدد السنة.</li>
+    <li><b>الساعة الرملية</b>: شخص في الوسط، والأسلاف في الزجاج العلوي، والذرية في الأسفل، والإخوة حول الوسط، وبقية العائلة على حلقة خافتة خارجية. رمل ذهبي يسري من الماضي إلى المستقبل. اضغط على أي شخص ليصبح في المركز.</li>
+    <li><b>مدينة الإرث</b>: كل شخص برج ارتفاعه بحجم ذريته. ترتفع الأبراج سنة الميلاد، وتنطفئ النوافذ عند الوفاة، وجسور من الضوء بين الوالد والولد، والأعمال واجهات محلات مضيئة.</li>
+    <li><b>ماندالا الجيرة</b>: العائلة كنقش نجمة ثمانية إسلامية. المؤسسون في الوردة المركزية، وكل جيل حلقة من بلاطات المينا والذهب تربطها خيوط ذهبية، فوق شبكة جيرة تدور ببطء.</li>
+    <li><b>طبقات زجاجية</b>: كل جيل لوح زجاجي مصنفر تظهر الخطوط من خلفه، والأشخاص على أعمدة من الضوء.</li>
+    <li>عند تغيير المشهد ينتقل كل شخص إلى مكانه الجديد. الضغط على شخص يُبرز أسلافه وذريته. البحث يتعامل مع اختلاف الكتابة (أ إ آ ا، ة ه، ى ي).</li>
+  </ul></section>
+  <section><h3>كيف يتحمل الحجم</h3><ul>
+    <li>كل الصور في أطلس واحد وتُرسم <b>باستدعاء رسم واحد</b>.</li>
+    <li>كل الأغصان شبكة واحدة، والنمو عبر الزمن يحدث في المظلل دون كلفة على المعالج.</li>
+    <li>الأوراق شبكة واحدة متكررة، والأسماء لأقرب الأشخاص فقط.</li>
+    <li>الصفحة تراقب معدل الإطارات وتخفض الجودة تلقائياً. جرّب <b>اختبار الحجم (500)</b>.</li>
+    <li>في التطبيق يُنقل هذا إلى react-three-fiber بنفس المظللات، مع تجميع الصور الحقيقية في الأطلس على الخادم.</li>
+  </ul></section>`,
+};
+
+// ======================= State & helpers =======================
+const app = document.getElementById('app');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const S = { lang: 'en', scene: 'tree', year: 2026, yearShown: 2026, playing: false, sel: null, hover: null, spin: !reduced, follow: true, data: 'sample' };
+const t = k => T[S.lang][k];
+let M = buildModel(SAMPLE);
+const full = (p, l = S.lang) => `${p[l]} ${FAM[p.fam][l]}`;
+const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const years = p => (p.died ? `${p.born}–${p.died}` : `${p.born}–`);
+const norm = s => s.toLowerCase().replace(/[ً-ْـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي');
+const isDark = () => { const a = document.documentElement.getAttribute('data-theme'); return a ? a === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; };
+const lin = hex => new THREE.Color(hex); // sRGB hex to linear colour
+const ease = x => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+
+const PAL = {
+  dark: { top: '#02060a', hor: '#0b2427', ground: '#071012', ring: '#1d4f4b', barkA: '#3a2819', barkB: '#8a6644', glow: '#3fd0bd', fog: '#0a1e21',
+    skyL: '#a9bcb6', groundL: '#2b1f16', leaf: '#3f9d6a', autumn: '#d4902f', label: 'rgba(8,15,20,0.8)', labelInk: '#eef5f7', labelSub: '#9fb3bd',
+    bloom: 0.75, exposure: 1.1, fire: '#ffd27a', plate: '#9fe3da', fogNear: 140, fogFar: 600 },
+  light: { top: '#9fc3d2', hor: '#efe8dc', ground: '#d6cbb9', ring: '#b9c9c2', barkA: '#4a3726', barkB: '#86674b', glow: '#0e8f80', fog: '#e9e2d5',
+    skyL: '#fdf8ef', groundL: '#8a7660', leaf: '#3f8f57', autumn: '#c47a1c', label: 'rgba(255,255,255,0.9)', labelInk: '#142028', labelSub: '#5a6a74',
+    bloom: 0.14, exposure: 0.92, fire: '#f2b64a', plate: '#d7efeb', fogNear: 180, fogFar: 800 },
+};
+const pal = () => PAL[isDark() ? 'dark' : 'light'];
+
+// ======================= Renderer =======================
+const canvas = document.getElementById('c'), stage = document.getElementById('stage');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+} catch (e) { renderer = null; }
+if (!renderer || !renderer.capabilities.isWebGL2) {
+  document.getElementById('noticeText').textContent = `${T.en.noGL} ${T.ar.noGL}`; document.getElementById('notice').hidden = false;
+  throw new Error('WebGL2 unavailable');
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, 1, 0.5, 3000);
+camera.position.set(60, 46, 90);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.07; controls.maxDistance = 900; controls.minDistance = 6;
+controls.autoRotateSpeed = 0.35; controls.autoRotate = S.spin;
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.9, 0.55, 0.9);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+const U = { uYear: { value: 2026 }, uTime: { value: 0 }, uEnter: { value: 1 }, uMinYear: { value: 1900 } };
+const effYear = () => THREE.MathUtils.lerp(M.minYear - 3, U.uYear.value, U.uEnter.value);
+
+// ======================= Portraits atlas =======================
+// Placeholder portraits: Gulf dress silhouettes (ghutra and agal, or shayla) on the family colour. Real photos go in the same cells.
+function drawPortrait(g, p, x, y, s) {
+  const c = FAM[p.fam].c, cx = x + s / 2;
+  const grd = g.createRadialGradient(cx, y + s * 0.35, s * 0.05, cx, y + s / 2, s * 0.75);
+  grd.addColorStop(0, new THREE.Color(c).lerp(new THREE.Color('#ffffff'), 0.35).getStyle()); grd.addColorStop(1, c);
+  g.fillStyle = grd; g.fillRect(x, y, s, s);
+  const skin = ['#c9976f', '#b9845e', '#d8a983', '#a87653'][p.idx % 4 || 0];
+  if (p.sex === 'M') {
+    g.fillStyle = '#e9e6de';
+    g.beginPath(); g.ellipse(cx, y + s * 1.06, s * 0.4, s * 0.33, 0, Math.PI, 2 * Math.PI); g.fill();                // kandura shoulders
+    g.fillStyle = '#f1efe8';
+    g.beginPath(); g.moveTo(cx - s * 0.3, y + s * 0.86); g.quadraticCurveTo(cx - s * 0.31, y + s * 0.2, cx, y + s * 0.15);
+    g.quadraticCurveTo(cx + s * 0.31, y + s * 0.2, cx + s * 0.3, y + s * 0.86); g.lineTo(cx + s * 0.17, y + s * 0.86);
+    g.quadraticCurveTo(cx + s * 0.2, y + s * 0.42, cx, y + s * 0.3); g.quadraticCurveTo(cx - s * 0.2, y + s * 0.42, cx - s * 0.17, y + s * 0.86); g.closePath(); g.fill(); // ghutra drape
+    g.fillStyle = 'rgba(0,0,0,0.12)'; g.beginPath(); g.ellipse(cx, y + s * 0.6, s * 0.18, s * 0.24, 0, 0, 2 * Math.PI); g.fill();
+    g.fillStyle = skin; g.beginPath(); g.ellipse(cx, y + s * 0.5, s * 0.135, s * 0.17, 0, 0, 2 * Math.PI); g.fill();              // face
+    g.fillStyle = 'rgba(40,28,20,0.55)'; g.beginPath(); g.ellipse(cx, y + s * 0.62, s * 0.1, s * 0.06, 0, 0, Math.PI); g.fill();   // beard
+    g.strokeStyle = '#1b1a1f'; g.lineWidth = s * 0.045;
+    g.beginPath(); g.ellipse(cx, y + s * 0.3, s * 0.2, s * 0.05, 0, Math.PI * 1.05, Math.PI * 1.95); g.stroke();                   // agal
+  } else {
+    g.fillStyle = '#16141c';
+    g.beginPath(); g.moveTo(cx - s * 0.42, y + s); g.quadraticCurveTo(cx - s * 0.38, y + s * 0.62, cx - s * 0.24, y + s * 0.52);
+    g.quadraticCurveTo(cx - s * 0.28, y + s * 0.14, cx, y + s * 0.13); g.quadraticCurveTo(cx + s * 0.28, y + s * 0.14, cx + s * 0.24, y + s * 0.52);
+    g.quadraticCurveTo(cx + s * 0.38, y + s * 0.62, cx + s * 0.42, y + s); g.closePath(); g.fill();                  // shayla and abaya
+    g.fillStyle = skin; g.beginPath(); g.ellipse(cx, y + s * 0.44, s * 0.125, s * 0.16, 0, 0, 2 * Math.PI); g.fill(); // face
+    g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = s * 0.02; g.beginPath(); g.arc(cx, y + s * 0.42, s * 0.2, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+  }
+}
+let atlas = null;
+function buildAtlas() {
+  const n = M.n, cell = n > 160 ? 64 : 128, cols = Math.ceil(Math.sqrt(n)), side = THREE.MathUtils.ceilPowerOfTwo(cols * cell);
+  const cv = document.createElement('canvas'); cv.width = cv.height = side;
+  const g = cv.getContext('2d');
+  M.people.forEach((p, i) => { const x = (i % cols) * cell, y = Math.floor(i / cols) * cell; drawPortrait(g, p, x, y, cell); p.uv = [x / side, 1 - (y + cell) / side, cell / side, cell / side]; p.cell = [x, y, cell]; });
+  if (atlas) atlas.tex.dispose();
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; tex.generateMipmaps = true;
+  atlas = { cv, tex, side };
+}
+const thumbCache = new Map();
+function thumb(p) {
+  if (thumbCache.has(p.id)) return thumbCache.get(p.id);
+  const c = document.createElement('canvas'); c.width = c.height = 96; const [x, y, s] = p.cell;
+  c.getContext('2d').drawImage(atlas.cv, x, y, s, s, 0, 0, 96, 96);
+  const url = c.toDataURL(); thumbCache.set(p.id, url); return url;
+}
+
+// ======================= Portrait billboards (one draw call for everyone) =======================
+const medalMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  uniforms: { ...U, uAtlas: { value: null }, uMorph: { value: 1 }, uScale: { value: 1 }, uStyle: { value: 0 }, uFocus: { value: 0 }, uLift: { value: 6 } },
+  vertexShader: /* glsl */`
+    attribute vec3 aFrom; attribute vec3 aTo; attribute vec4 aUv; attribute vec3 aCol; attribute float aSize; attribute float aBirth; attribute float aDeath; attribute float aHi;
+    uniform float uMorph, uYear, uEnter, uMinYear, uScale, uLift, uTime;
+    varying vec2 vQ; varying vec4 vUv; varying vec3 vCol; varying float vDead, vHi, vA;
+    void main() {
+      float m = uMorph; m = m < .5 ? 4.*m*m*m : 1. - pow(-2.*m + 2., 3.) / 2.;
+      vec3 p = mix(aFrom, aTo, m); p.y += sin(m * 3.14159) * uLift;
+      float yr = mix(uMinYear - 3., uYear, uEnter);
+      float app = smoothstep(aBirth, aBirth + .9, yr);
+      vA = app; vDead = step(aDeath, yr); vHi = aHi; vCol = aCol; vUv = aUv; vQ = position.xy * 2.;
+      p.y += sin(uTime * .8 + aBirth * 1.7) * .12;
+      vec4 mv = modelViewMatrix * vec4(p, 1.);
+      float s = aSize * uScale * (.35 + .65 * app) * (1. + .3 * step(1.5, aHi));
+      mv.xy += position.xy * s * 2.3;
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: /* glsl */`
+    uniform sampler2D uAtlas; uniform float uTime, uStyle, uFocus;
+    varying vec2 vQ; varying vec4 vUv; varying vec3 vCol; varying float vDead, vHi, vA;
+    void main() {
+      float r = length(vQ); if (r > 1. || vA < .01) discard;
+      float core = uStyle > .5 ? .5 : .6, rimW = .085;
+      vec3 col; float a;
+      if (r < core) {
+        vec2 uv = vQ / core * .5 + .5;
+        col = texture2D(uAtlas, vUv.xy + uv * vUv.zw).rgb;
+        if (vDead > .5) { float l = dot(col, vec3(.3, .59, .11)); col = mix(col, vec3(l), .85) * .75; }
+        col += smoothstep(.55, 0., length(vQ / core - vec2(-.35, .45))) * .18;     // glass highlight
+        col *= (.82 + .18 * smoothstep(core, core * .6, r)) * .86;                  // inner vignette, kept under the bloom threshold
+        a = 1.;
+      } else if (r < core + rimW) {
+        float lit = vDead > .5 ? .7 : 2.1;
+        col = vCol * lit * (1. + .45 * step(1.5, vHi) + .2 * step(.5, vHi)); a = 1.;
+        col *= .85 + .3 * smoothstep(core + rimW, core, r);
+      } else {
+        float d = r - core - rimW;
+        float glow = exp(-d * (uStyle > .5 ? 5. : 9.));
+        col = vCol * (vDead > .5 ? .5 : 1.3); a = glow * (uStyle > .5 ? .85 : .3) * (1. + step(.5, vHi));
+        if (vHi > 1.5) { float ph = fract(uTime * .55); float pr = core + rimW + .05 + .3 * ph; a += smoothstep(.03, 0., abs(r - pr)) * (1. - ph) * .9; }
+      }
+      float dim = uFocus > .5 && vHi < .5 ? .28 : 1.;
+      gl_FragColor = vec4(col, a * vA * dim);
+    }`,
+});
+const medalGeo = new THREE.InstancedBufferGeometry();
+medalGeo.setAttribute('position', new THREE.Float32BufferAttribute([-.5, -.5, 0, .5, -.5, 0, .5, .5, 0, -.5, .5, 0], 3));
+medalGeo.setIndex([0, 1, 2, 0, 2, 3]);
+const medals = new THREE.Mesh(medalGeo, medalMat); medals.frustumCulled = false; medals.renderOrder = 10;
+scene.add(medals);
+let posFrom, posTo;
+function buildMedals() {
+  medalGeo.dispose(); // three caches the max instance count per geometry until it is disposed
+  const n = M.n, attr = (k, size) => { const a = new THREE.InstancedBufferAttribute(new Float32Array(n * size), size); medalGeo.setAttribute(k, a); return a; };
+  const uv = attr('aUv', 4), col = attr('aCol', 3), sz = attr('aSize', 1), b = attr('aBirth', 1), d = attr('aDeath', 1);
+  attr('aHi', 1); posFrom = attr('aFrom', 3); posTo = attr('aTo', 3);
+  M.people.forEach((p, i) => {
+    uv.setXYZW(i, ...p.uv); const c = lin(FAM[p.fam].c); col.setXYZ(i, c.r, c.g, c.b);
+    sz.setX(i, p.gen === 0 && !p.mi ? 1.35 : p.mi ? 0.85 : 1); b.setX(i, p.born); d.setX(i, p.died ?? 9999);
+  });
+  medalGeo.instanceCount = n;
+  medalMat.uniforms.uAtlas.value = atlas.tex;
+}
+// Current interpolated position of one person (mirrors the shader so labels and picking line up)
+const _v = new THREE.Vector3();
+function personPos(i, out = _v) {
+  let m = medalMat.uniforms.uMorph.value; m = ease(m);
+  out.set(THREE.MathUtils.lerp(posFrom.getX(i), posTo.getX(i), m), THREE.MathUtils.lerp(posFrom.getY(i), posTo.getY(i), m) + Math.sin(m * Math.PI) * medalMat.uniforms.uLift.value,
+    THREE.MathUtils.lerp(posFrom.getZ(i), posTo.getZ(i), m));
+  out.y += Math.sin(U.uTime.value * 0.8 + M.people[i].born * 1.7) * 0.12;
+  return out;
+}
+
+// ======================= Shared shader chunks =======================
+const NOISE = /* glsl */`
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+    return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }`;
+const FOG = { uFogColor: { value: new THREE.Color() }, uFogNear: { value: 120 }, uFogFar: { value: 520 } };
+
+// Tapered tube along a curve; appends to typed builders. aT runs 0..1 from parent to child.
+function tube(B, curve, r0, r1, segs, radial, birth, hiKey, grow = 1.4) {
+  const frames = curve.computeFrenetFrames(segs, false), base = B.pos.length / 3, P = new THREE.Vector3(), n = new THREE.Vector3();
+  for (let i = 0; i <= segs; i++) {
+    const tt = i / segs; curve.getPointAt(tt, P); const r = THREE.MathUtils.lerp(r0, r1, Math.pow(tt, 0.85));
+    for (let j = 0; j <= radial; j++) {
+      const v = (j / radial) * Math.PI * 2;
+      n.copy(frames.normals[i]).multiplyScalar(Math.cos(v)).addScaledVector(frames.binormals[i], Math.sin(v)).normalize();
+      B.pos.push(P.x + n.x * r, P.y + n.y * r, P.z + n.z * r); B.nor.push(n.x, n.y, n.z);
+      B.t.push(tt); B.u.push(j / radial); B.birth.push(birth); B.grow.push(grow); B.key.push(hiKey);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) {
+    const a = base + i * (radial + 1) + j, b = a + radial + 1;
+    B.idx.push(a, b, a + 1, b, b + 1, a + 1);
+  }
+}
+const builder = () => ({ pos: [], nor: [], t: [], u: [], birth: [], grow: [], key: [], idx: [] });
+function bake(B) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(B.pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(B.nor, 3));
+  g.setAttribute('aT', new THREE.Float32BufferAttribute(B.t, 1)); g.setAttribute('aU', new THREE.Float32BufferAttribute(B.u, 1));
+  g.setAttribute('aBirth', new THREE.Float32BufferAttribute(B.birth, 1)); g.setAttribute('aGrow', new THREE.Float32BufferAttribute(B.grow, 1));
+  g.setAttribute('aHi', new THREE.Float32BufferAttribute(new Float32Array(B.key.length), 1));
+  g.setIndex(B.idx); g.userData.keys = B.key; return g;
+}
+
+// Bark: lit procedural bark, grows in the shader, light flows along the selected lineage
+function barkMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: { ...U, ...FOG, uBarkA: { value: new THREE.Color() }, uBarkB: { value: new THREE.Color() }, uGlow: { value: new THREE.Color() },
+      uSky: { value: new THREE.Color() }, uGround: { value: new THREE.Color() }, uFocus: { value: 0 } },
+    vertexShader: /* glsl */`
+      attribute float aT, aU, aBirth, aGrow, aHi; varying float vT, vU, vBirth, vGrow, vHi, vDepth; varying vec3 vN, vW;
+      void main() { vT = aT; vU = aU; vBirth = aBirth; vGrow = aGrow; vHi = aHi; vN = normalize(mat3(modelMatrix) * normal);
+        vec4 w = modelMatrix * vec4(position, 1.); vW = w.xyz; vec4 mv = viewMatrix * w; vDepth = -mv.z; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: /* glsl */`
+      uniform float uYear, uEnter, uMinYear, uTime, uFogNear, uFogFar, uFocus; uniform vec3 uBarkA, uBarkB, uGlow, uSky, uGround, uFogColor;
+      varying float vT, vU, vBirth, vGrow, vHi, vDepth; varying vec3 vN, vW;
+      ${NOISE}
+      void main() {
+        float yr = mix(uMinYear - 3., uYear, uEnter);
+        float g = clamp((yr - vBirth) / vGrow, 0., 1.); if (vT > g) discard;
+        vec3 n = normalize(vN);
+        float bark = noise(vec2(vU * 7., vT * 26. + vBirth)) * .6 + noise(vec2(vU * 23., vT * 90.)) * .4;
+        float ridges = smoothstep(.35, .65, noise(vec2(vU * 14., vT * 6. + vBirth * .1)));
+        vec3 base = mix(uBarkA, uBarkB, bark * .8 + ridges * .25);
+        vec3 L = normalize(vec3(.45, .9, .35));
+        float dif = max(dot(n, L), 0.);
+        vec3 hemi = mix(uGround, uSky, n.y * .5 + .5);
+        vec3 col = base * (hemi * .6 + dif * 1.05);
+        vec3 V = normalize(cameraPosition - vW); float rim = pow(1. - max(dot(n, V), 0.), 3.);
+        col += uGlow * rim * .06;
+        float flow = smoothstep(.9, 1., fract(vT * 2.5 - uTime * .3 + vBirth * .37));
+        col += uGlow * flow * .07;
+        col = mix(col, col * 1.25 + uGlow * .12, vHi) + uGlow * vHi * flow * .9;
+        col = mix(col, col * .35, uFocus * (1. - step(.5, vHi)));
+        col += uGlow * 2.5 * smoothstep(g - .05, g, vT) * (1. - step(.999, g));   // glowing growth tip
+        col = mix(col, uFogColor, smoothstep(uFogNear, uFogFar, vDepth));
+        gl_FragColor = vec4(col, 1.);
+      }`,
+  });
+}
+// Light lines: additive, with pulses running parent -> child
+function flowLines(B) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(B.pos, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(B.t, 1));
+  g.setAttribute('aBirth', new THREE.Float32BufferAttribute(B.birth, 1)); g.setAttribute('aCol', new THREE.Float32BufferAttribute(B.col, 3));
+  g.setAttribute('aHi', new THREE.Float32BufferAttribute(new Float32Array(B.t.length), 1)); g.userData.keys = B.key;
+  const m = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { ...U, uFocus: { value: 0 }, uBase: { value: 0.35 } },
+    vertexShader: /* glsl */`attribute float aT, aBirth, aHi; attribute vec3 aCol; varying float vT, vBirth, vHi; varying vec3 vCol;
+      void main() { vT = aT; vBirth = aBirth; vHi = aHi; vCol = aCol; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+    fragmentShader: /* glsl */`uniform float uYear, uEnter, uMinYear, uTime, uFocus, uBase; varying float vT, vBirth, vHi; varying vec3 vCol;
+      void main() { float yr = mix(uMinYear - 3., uYear, uEnter); float g = clamp((yr - vBirth) / 1.2, 0., 1.); if (vT > g) discard;
+        float pulse = smoothstep(.85, 1., fract(vT * 1.6 - uTime * .45 + vBirth * .13));
+        float a = uBase + pulse * .9 + vHi * (.5 + 1.3 * pulse);
+        a *= uFocus > .5 && vHi < .5 ? .18 : 1.;
+        gl_FragColor = vec4(vCol * a, 1.); }`,
+  });
+  return new THREE.LineSegments(g, m);
+}
+const lineBuilder = () => ({ pos: [], t: [], birth: [], col: [], key: [] });
+function addCurveLine(B, curve, n, birth, key, color) {
+  const pts = curve.getSpacedPoints(n);
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[i + 1];
+    B.pos.push(a.x, a.y, a.z, b.x, b.y, b.z); B.t.push(i / n, (i + 1) / n); B.birth.push(birth, birth); B.key.push(key, key);
+    B.col.push(color.r, color.g, color.b, color.r, color.g, color.b);
+  }
+}
+
+// Soft round sprite texture (glows, nebulae, fireflies)
+function softTex(stops) {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); stops.forEach(([o, col]) => r.addColorStop(o, col));
+  g.fillStyle = r; g.fillRect(0, 0, 128, 128); const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; return tx;
+}
+function skyDome(top, hor, ground) {
+  return new THREE.Mesh(new THREE.SphereGeometry(1400, 32, 16), new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false,
+    uniforms: { uTop: { value: lin(top) }, uHor: { value: lin(hor) }, uGround: { value: lin(ground) } },
+    vertexShader: `varying vec3 vD; void main() { vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+    fragmentShader: `uniform vec3 uTop, uHor, uGround; varying vec3 vD; void main() { float h = vD.y;
+      vec3 c = h > 0. ? mix(uHor, uTop, pow(h, .55)) : mix(uHor, uGround, pow(-h, .4)); gl_FragColor = vec4(c, 1.); }`,
+  }));
+}
+
+// ======================= Scene: Living Tree =======================
+function treeScene() {
+  const pp = pal(), group = new THREE.Group(), pos = new Float32Array(M.n * 3);
+  const spread = Math.max(1, Math.sqrt(M.n / 30)), H = 8.5 * Math.pow(spread, 0.75), trunk = 11 * Math.pow(spread, 0.6), R = g => (g === 0 ? 0 : (5 + g * 7.5) * spread);
+  const rnd = rng(3), jit = {};
+  M.people.forEach(p => (jit[p.id] = rnd()));
+  const P3 = p => {
+    if (p.gen === 0 && !p.mi) return new THREE.Vector3(0, trunk, 0);
+    const th = p.ang * Math.PI * 2 * 0.985 + 0.4, r = R(p.gen);
+    return new THREE.Vector3(Math.cos(th) * r, trunk + p.gen * H + (jit[p.id] - 0.5) * 2.4 - r * 0.06, Math.sin(th) * r);
+  };
+  const at = {};
+  M.people.forEach(p => { if (!p.mi) at[p.id] = P3(p); });
+  M.people.forEach(p => {
+    if (!p.mi) return; const a = at[p.anchor] || new THREE.Vector3(0, trunk, 0);
+    const out = new THREE.Vector3(a.x, 0, a.z); if (out.lengthSq() < 0.01) out.set(1, 0, 0); out.normalize();
+    const tan = new THREE.Vector3(-out.z, 0, out.x), k = (p.anchor ? M.byId[p.anchor].spouses : []).findIndex(s => s.id === p.id);
+    at[p.id] = a.clone().addScaledVector(tan, (k % 2 ? -1 : 1) * (2.9 + Math.floor(k / 2) * 2.4)).add(new THREE.Vector3(0, -1.1, 0)).addScaledVector(out, -0.6);
+  });
+  M.people.forEach((p, i) => { pos[i * 3] = at[p.id].x; pos[i * 3 + 1] = at[p.id].y; pos[i * 3 + 2] = at[p.id].z; });
+
+  // Branches
+  const B = builder(), maxLeaves = M.root.leaves, rad = p => 0.16 + 0.95 * Math.sqrt(p.leaves / maxLeaves) * (M.n > 100 ? 1.6 : 1);
+  const root = M.root, base = new THREE.Vector3(0, -0.5, 0);
+  tube(B, new THREE.CatmullRomCurve3([base, new THREE.Vector3(0.6, trunk * 0.35, 0.3), new THREE.Vector3(-0.4, trunk * 0.7, -0.2), at[root.id]]),
+    rad(root) * 2.1, rad(root) * 1.25, 28, 14, root.born - 1, root.id, 2.5);
+  for (let k = 0; k < 7; k++) { // roots into the ground
+    const a = (k / 7) * Math.PI * 2 + rnd() * 0.5, L = 7 + rnd() * 8;
+    tube(B, new THREE.CatmullRomCurve3([new THREE.Vector3(0, 1.2, 0), new THREE.Vector3(Math.cos(a) * L * 0.4, -0.1, Math.sin(a) * L * 0.4), new THREE.Vector3(Math.cos(a) * L, -0.9, Math.sin(a) * L)]),
+      rad(root) * 0.9, 0.06, 14, 8, root.born - 2, '', 2.5);
+  }
+  M.people.forEach(p => {
+    if (p.mi || !p.parent) return;
+    const a = at[p.parent], c = at[p.id], d = c.clone().sub(a), up = new THREE.Vector3(0, 1, 0);
+    const curve = new THREE.CatmullRomCurve3([a.clone(), a.clone().addScaledVector(d, 0.22).addScaledVector(up, H * 0.42),
+      a.clone().addScaledVector(d, 0.68).addScaledVector(up, H * 0.2), c.clone()], false, 'centripetal');
+    tube(B, curve, rad(M.byId[p.parent]) * 0.82, rad(p) * 0.85, M.n > 100 ? 10 : 22, M.n > 100 ? 6 : 10, p.born, p.id);
+  });
+  M.people.forEach(p => { // short gold-tipped twig to a spouse who married in
+    if (!p.mi || !p.anchor) return; const a = at[p.anchor], c = at[p.id];
+    const s = (p.anchor ? M.byId[p.anchor].spouses : []).find(x => x.id === p.id);
+    tube(B, new THREE.CatmullRomCurve3([a.clone(), a.clone().lerp(c, 0.5).add(new THREE.Vector3(0, -0.8, 0)), c.clone()]), 0.12, 0.08, 8, 6, s ? s.year : p.born, p.id, 1);
+  });
+  const barkGeo = bake(B), barkMat = barkMaterial(), bark = new THREE.Mesh(barkGeo, barkMat);
+  group.add(bark);
+
+  // Leaves: one instanced mesh; open after birth, turn amber and fall after death
+  const leafTex = (() => {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 128; const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(32, 4); g.bezierCurveTo(62, 40, 58, 96, 32, 124); g.bezierCurveTo(6, 96, 2, 40, 32, 4); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 3; g.beginPath(); g.moveTo(32, 10); g.lineTo(32, 120); g.stroke();
+    return new THREE.CanvasTexture(c);
+  })();
+  const per = M.n > 100 ? 7 : 22, owners = M.people.filter(p => !p.mi), count = owners.length * per;
+  const leafGeo = new THREE.PlaneGeometry(0.9, 1.6); leafGeo.translate(0, 0.8, 0);
+  const lb = new Float32Array(count), ld = new Float32Array(count), lp = new Float32Array(count), lc = new Float32Array(count * 3);
+  leafGeo.setAttribute('aBirth', new THREE.InstancedBufferAttribute(lb, 1)); leafGeo.setAttribute('aDeath', new THREE.InstancedBufferAttribute(ld, 1));
+  leafGeo.setAttribute('aPhase', new THREE.InstancedBufferAttribute(lp, 1)); leafGeo.setAttribute('aCol', new THREE.InstancedBufferAttribute(lc, 3));
+  const leafMat = new THREE.ShaderMaterial({
+    side: THREE.DoubleSide, transparent: true, depthWrite: true,
+    uniforms: { ...U, ...FOG, uLeaf: { value: leafTex }, uAutumn: { value: new THREE.Color() }, uFocus: { value: 0 } },
+    vertexShader: /* glsl */`attribute float aBirth, aDeath, aPhase; attribute vec3 aCol; uniform float uYear, uEnter, uMinYear, uTime;
+      varying vec2 vUv; varying vec3 vCol; varying float vA, vFall, vDepth;
+      void main() { vUv = uv; float yr = mix(uMinYear - 3., uYear, uEnter);
+        float grow = smoothstep(aBirth + .8, aBirth + 2.6, yr); float fall = max(yr - aDeath, 0.);
+        vec3 p = position * grow; float sw = sin(uTime * 1.4 + aPhase) * .28; p.x += sw * p.y * .45; p.z += cos(uTime * 1.1 + aPhase) * .1 * p.y;
+        vec4 w = modelMatrix * instanceMatrix * vec4(p, 1.);
+        float drop = fall * fall * 5.; w.y = max(w.y - drop, .05 + aPhase * .002); w.x += sin(fall * 2.5 + aPhase) * min(fall, 2.) * 1.2;
+        vFall = clamp(fall * 1.5, 0., 1.); vCol = aCol; vA = grow * (1. - smoothstep(1.8, 3.2, fall));
+        vec4 mv = viewMatrix * w; vDepth = -mv.z; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: /* glsl */`uniform sampler2D uLeaf; uniform vec3 uAutumn, uFogColor; uniform float uFogNear, uFogFar, uFocus;
+      varying vec2 vUv; varying vec3 vCol; varying float vA, vFall, vDepth;
+      void main() { vec4 tx = texture2D(uLeaf, vUv); if (tx.a < .5 || vA < .03) discard;
+        vec3 c = mix(vCol, uAutumn, vFall) * (1. - tx.r * 0.) * (.75 + .35 * vUv.y);
+        c = mix(c, c * .4, uFocus); c = mix(c, uFogColor, smoothstep(uFogNear, uFogFar, vDepth));
+        gl_FragColor = vec4(c, vA); }`,
+  });
+  const leaves = new THREE.InstancedMesh(leafGeo, leafMat, count);
+  const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), lr = rng(9);
+  let li = 0; const leafBase = lin(pp.leaf);
+  owners.forEach(p => {
+    const c = at[p.id], fam = lin(FAM[p.fam].c);
+    for (let k = 0; k < per; k++, li++) {
+      const along = k < per * 0.3 && p.parent ? at[p.parent].clone().lerp(c, 0.45 + lr() * 0.5) : c.clone();
+      const ph = lr() * Math.PI * 2, rr = 0.8 + lr() * (k < per * 0.3 ? 1.2 : 3.4);
+      along.add(new THREE.Vector3(Math.cos(ph) * rr, (lr() - 0.3) * 2.6, Math.sin(ph) * rr));
+      e.set(lr() * 1.4 - 0.7, lr() * 6.28, lr() * 1.6 - 0.8); q.setFromEuler(e); const s = 0.6 + lr() * 0.8; sc.set(s, s, s);
+      mtx.compose(along, q, sc); leaves.setMatrixAt(li, mtx);
+      lb[li] = p.born + lr() * 1.5; ld[li] = (p.died ?? 9999) + lr() * 1.2; lp[li] = lr() * 100;
+      const cc = leafBase.clone().lerp(fam, 0.22 + lr() * 0.15).multiplyScalar(0.8 + lr() * 0.45); lc[li * 3] = cc.r; lc[li * 3 + 1] = cc.g; lc[li * 3 + 2] = cc.b;
+    }
+  });
+  leaves.frustumCulled = false; group.add(leaves);
+
+  // Ground with generation contour rings, and fireflies
+  const gmat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: { ...FOG, uGround: { value: new THREE.Color() }, uRing: { value: new THREE.Color() }, uStep: { value: 7.5 * spread }, uTime: U.uTime },
+    vertexShader: `varying vec2 vP; varying float vDepth; void main() { vP = position.xy; vec4 mv = modelViewMatrix * vec4(position, 1.); vDepth = -mv.z; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 uGround, uRing, uFogColor; uniform float uStep, uFogNear, uFogFar, uTime; varying vec2 vP; varying float vDepth;
+      void main() { float r = length(vP); float ring = smoothstep(.12, 0., abs(fract((r - 5.) / uStep) - .5) - .47) * step(4., r);
+        vec3 c = mix(uGround, uRing, ring * .7); float a = 1. - smoothstep(180., 420., r);
+        c = mix(c, uFogColor, smoothstep(uFogNear, uFogFar, vDepth)); gl_FragColor = vec4(c, a); }`,
+  });
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(440, 96), gmat); ground.rotation.x = -Math.PI / 2; ground.position.y = -1; group.add(ground);
+  const fN = 260, fp = new Float32Array(fN * 3), fph = new Float32Array(fN), top = trunk + (M.maxGen + 1) * H, wide = R(M.maxGen) + 10;
+  for (let i = 0; i < fN; i++) { const a = rnd() * 6.28, r = rnd() * wide; fp[i * 3] = Math.cos(a) * r; fp[i * 3 + 1] = 2 + rnd() * top; fp[i * 3 + 2] = Math.sin(a) * r; fph[i] = rnd() * 50; }
+  const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.BufferAttribute(fp, 3)); fg.setAttribute('aPh', new THREE.BufferAttribute(fph, 1));
+  const fire = new THREE.Points(fg, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: U.uTime, uCol: { value: new THREE.Color() }, uTex: { value: softTex([[0, 'rgba(255,255,255,1)'], [0.25, 'rgba(255,255,255,0.5)'], [1, 'rgba(255,255,255,0)']]) } },
+    vertexShader: `attribute float aPh; uniform float uTime; varying float vA; void main() { vec3 p = position; p.y += sin(uTime * .4 + aPh) * 1.5; p.x += cos(uTime * .3 + aPh) * 1.2;
+      vA = .4 + .6 * sin(uTime * 1.7 + aPh * 3.); vec4 mv = modelViewMatrix * vec4(p, 1.); gl_PointSize = 70. / -mv.z * (1. + vA); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform sampler2D uTex; uniform vec3 uCol; varying float vA; void main() { float a = texture2D(uTex, gl_PointCoord).a * max(vA, 0.); gl_FragColor = vec4(uCol * 2.2 * a, 1.); }`,
+  }));
+  group.add(fire);
+  const sky = skyDome(pp.top, pp.hor, pp.ground); group.add(sky);
+
+  const tint = () => {
+    const q2 = pal();
+    barkMat.uniforms.uBarkA.value.copy(lin(q2.barkA)); barkMat.uniforms.uBarkB.value.copy(lin(q2.barkB)); barkMat.uniforms.uGlow.value.copy(lin(q2.glow));
+    barkMat.uniforms.uSky.value.copy(lin(q2.skyL)); barkMat.uniforms.uGround.value.copy(lin(q2.groundL));
+    [barkMat, leafMat, gmat].forEach(m => { m.uniforms.uFogNear.value = q2.fogNear; m.uniforms.uFogFar.value = q2.fogFar; });
+    renderer.toneMappingExposure = q2.exposure;
+    [barkMat, leafMat, gmat].forEach(m => m.uniforms.uFogColor.value.copy(lin(q2.fog)));
+    leafMat.uniforms.uAutumn.value.copy(lin(q2.autumn)); gmat.uniforms.uGround.value.copy(lin(q2.ground)); gmat.uniforms.uRing.value.copy(lin(q2.ring));
+    fire.material.uniforms.uCol.value.copy(lin(q2.fire)).multiplyScalar(isDark() ? 1 : 0.35);
+    sky.material.uniforms.uTop.value.copy(lin(q2.top)); sky.material.uniforms.uHor.value.copy(lin(q2.hor)); sky.material.uniforms.uGround.value.copy(lin(q2.ground));
+    bloom.strength = q2.bloom;
+  };
+  tint();
+  const top2 = trunk + M.maxGen * H, w = R(M.maxGen);
+  return {
+    key: 'tree', group, pos, size: M.n > 100 ? 1.35 : 2.1, style: 0, lift: 6, tint,
+    hiTargets: [{ geo: barkGeo }], focusMats: [barkMat, leafMat],
+    view: (() => { const D = Math.max(w * 1.15, top2 * 1.05) + 26; return { target: new THREE.Vector3(0, top2 * 0.56, 0), cam: new THREE.Vector3(D * 0.62, top2 * 0.7 + 6, D * 0.86) }; })(),
+    follow: M.n > 100 ? 40 : 50,
+  };
+}
+
+// ======================= Scene: Constellation =======================
+function skyScene() {
+  const group = new THREE.Group(), pos = new Float32Array(M.n * 3), spread = Math.max(1, Math.sqrt(M.n / 30));
+  const R = g => 7 + g * 12 * spread, Y = g => -g * 3.2;
+  const at = {};
+  M.people.forEach(p => { if (p.mi) return; const th = p.ang * Math.PI * 2 + 0.2; at[p.id] = p.gen === 0 ? new THREE.Vector3(0, 2, 0) : new THREE.Vector3(Math.cos(th) * R(p.gen), Y(p.gen) + Math.sin(th * 3) * 1.2, Math.sin(th) * R(p.gen)); });
+  M.people.forEach(p => {
+    if (!p.mi) return; const a = at[p.anchor] || new THREE.Vector3(); const k = (p.anchor ? M.byId[p.anchor].spouses : []).findIndex(s => s.id === p.id);
+    const out = new THREE.Vector3(a.x, 0, a.z); if (out.lengthSq() < 0.01) out.set(1, 0, 0); out.normalize();
+    const tan = new THREE.Vector3(-out.z, 0, out.x); at[p.id] = a.clone().addScaledVector(tan, (k % 2 ? -1 : 1) * (2.6 + Math.floor(k / 2) * 2.2)).add(new THREE.Vector3(0, 1.2, 0));
+  });
+  M.people.forEach((p, i) => { pos[i * 3] = at[p.id].x; pos[i * 3 + 1] = at[p.id].y; pos[i * 3 + 2] = at[p.id].z; });
+  // Bloodline arcs
+  const B = lineBuilder();
+  M.people.forEach(p => {
+    if (p.mi || !p.parent) return; const a = at[p.parent], c = at[p.id];
+    const mid = a.clone().lerp(c, 0.5); mid.y += 3 + a.distanceTo(c) * 0.12;
+    addCurveLine(B, new THREE.QuadraticBezierCurve3(a, mid, c), M.n > 100 ? 10 : 24, p.born, p.id, lin(FAM.mansouri.c).multiplyScalar(1.1));
+  });
+  // Couples share a small ring
+  M.people.forEach(p => {
+    if (!p.mi || !p.anchor) return; const a = at[p.anchor], c = at[p.id], m = a.clone().lerp(c, 0.5), r = a.distanceTo(c) / 2 + 0.9;
+    const s = (p.anchor ? M.byId[p.anchor].spouses : []).find(x => x.id === p.id), ring = [];
+    for (let k = 0; k <= 40; k++) { const v = (k / 40) * Math.PI * 2; ring.push(new THREE.Vector3(m.x + Math.cos(v) * r, m.y, m.z + Math.sin(v) * r)); }
+    addCurveLine(B, new THREE.CatmullRomCurve3(ring, true), 40, s ? s.year : p.born, p.id, lin('#e2b05a').multiplyScalar(0.6));
+  });
+  const lines = flowLines(B); lines.material.uniforms.uBase.value = 0.55; group.add(lines);
+  // Orbit rings per generation
+  const og = [], oc = [];
+  for (let g = 1; g <= M.maxGen; g++) for (let k = 0; k < 160; k++) {
+    const a0 = (k / 160) * Math.PI * 2, a1 = ((k + 1) / 160) * Math.PI * 2;
+    og.push(Math.cos(a0) * R(g), Y(g), Math.sin(a0) * R(g), Math.cos(a1) * R(g), Y(g), Math.sin(a1) * R(g));
+  }
+  const orbit = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(og, 3)),
+    new THREE.LineBasicMaterial({ color: lin('#3a6b78'), transparent: true, opacity: 0.35, depthWrite: false }));
+  group.add(orbit);
+  // Starfield and nebulae
+  const sr = rng(5), sN = 3200, sp = new Float32Array(sN * 3), sph = new Float32Array(sN);
+  for (let i = 0; i < sN; i++) { const u = sr() * 2 - 1, th = sr() * 6.283, rr = 500 + sr() * 600, s = Math.sqrt(1 - u * u); sp[i * 3] = Math.cos(th) * s * rr; sp[i * 3 + 1] = u * rr; sp[i * 3 + 2] = Math.sin(th) * s * rr; sph[i] = sr() * 100; }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3)); sg.setAttribute('aPh', new THREE.BufferAttribute(sph, 1));
+  group.add(new THREE.Points(sg, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { uTime: U.uTime },
+    vertexShader: `attribute float aPh; uniform float uTime; varying float vA; void main() { vA = .35 + .65 * (.5 + .5 * sin(uTime * (.6 + fract(aPh) * 1.5) + aPh));
+      vec4 mv = modelViewMatrix * vec4(position, 1.); gl_PointSize = (1.2 + fract(aPh * 7.) * 2.2); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying float vA; void main() { float d = length(gl_PointCoord - .5); if (d > .5) discard; gl_FragColor = vec4(vec3(.85, .9, 1.) * vA * (1. - d * 2.), 1.); }`,
+  })));
+  const neb = softTex([[0, 'rgba(255,255,255,0.9)'], [0.4, 'rgba(255,255,255,0.25)'], [1, 'rgba(255,255,255,0)']]);
+  ['#2fb3a3', '#9a7ff0', '#e26e8f', '#4d9be0', '#d99a3a'].forEach((c, i) => {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: neb, color: lin(c), transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const a = i * 1.3 + 0.5, r = R(M.maxGen) * 0.8; s.position.set(Math.cos(a) * r, -20 - i * 6, Math.sin(a) * r - 40); s.scale.setScalar(R(M.maxGen) * 1.6 + 80); group.add(s);
+  });
+  const bg = skyDome('#02040a', '#071423', '#02040a'); group.add(bg);
+  const w = R(M.maxGen);
+  return {
+    key: 'sky', group, pos, size: M.n > 100 ? 1.3 : 2.0, style: 1, lift: 10, tint: () => { bloom.strength = 1.1; renderer.toneMappingExposure = 1.1; },
+    hiTargets: [{ geo: lines.geometry }], focusMats: [lines.material],
+    view: { target: new THREE.Vector3(0, -M.maxGen * 1.6, 0), cam: new THREE.Vector3(w * 0.62, w * 0.72 + 12, w * 0.95 + 16) },
+    follow: 24,
+  };
+}
+
+// ======================= Scene: Glass Strata =======================
+function glassScene() {
+  const pp = pal(), group = new THREE.Group(), pos = new Float32Array(M.n * 3);
+  const W = Math.max(70, M.root.leaves * (M.n > 100 ? 4.2 : 9)), GY = 13;
+  const at = {};
+  M.people.forEach(p => { if (!p.mi) at[p.id] = new THREE.Vector3((p.ang - 0.5) * W, p.gen * GY + 2.6, 0); });
+  M.people.forEach(p => {
+    if (!p.mi) return; const a = at[p.anchor] || new THREE.Vector3(); const k = (p.anchor ? M.byId[p.anchor].spouses : []).findIndex(s => s.id === p.id);
+    at[p.id] = a.clone().add(new THREE.Vector3((k % 2 ? -1 : 1) * 2.2, -0.4, 3.6 + Math.floor(k / 2) * 2.6));
+  });
+  M.people.forEach((p, i) => { pos[i * 3] = at[p.id].x; pos[i * 3 + 1] = at[p.id].y; pos[i * 3 + 2] = at[p.id].z; });
+  // Frosted glass: tinted body, Fresnel-bright edges, soft sheen across the top face
+  const glassMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { uTint: { value: lin(pp.plate) }, uGlow: { value: lin(pp.glow) }, uTime: U.uTime, uBody: { value: isDark() ? 0.1 : 0.22 } },
+    vertexShader: `varying vec3 vN, vW; varying vec2 vXZ; void main() { vN = normalize(mat3(modelMatrix) * normal); vec4 w = modelMatrix * vec4(position, 1.); vW = w.xyz; vXZ = position.xz;
+      gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `uniform vec3 uTint, uGlow; uniform float uTime, uBody; varying vec3 vN, vW; varying vec2 vXZ;
+      void main() { vec3 n = normalize(vN), V = normalize(cameraPosition - vW); float fr = pow(1. - abs(dot(n, V)), 2.4);
+        float top = step(.6, n.y); float sheen = top * smoothstep(.0, 1., sin(vXZ.x * .05 + vXZ.y * .08 - uTime * .25) * .5 + .5) * .12;
+        vec3 c = uTint * (uBody + fr * .9) + uGlow * (fr * .35 + sheen); float a = uBody + fr * .55 + sheen + top * .06;
+        gl_FragColor = vec4(c, clamp(a, 0., .85)); }`,
+  });
+  const edgeMat = new THREE.LineBasicMaterial({ color: lin(pp.glow).multiplyScalar(1.8), transparent: true, opacity: 0.8 });
+  const plates = [];
+  for (let g = 0; g <= M.maxGen; g++) {
+    const xs = M.people.filter(p => p.gen === g).map(p => at[p.id].x); if (!xs.length) continue;
+    const x0 = Math.min(...xs) - 6, x1 = Math.max(...xs) + 6, w = Math.max(14, x1 - x0), d = 15, r = 2.4;
+    const sh = new THREE.Shape(); sh.moveTo(-w / 2 + r, -d / 2); sh.lineTo(w / 2 - r, -d / 2); sh.quadraticCurveTo(w / 2, -d / 2, w / 2, -d / 2 + r);
+    sh.lineTo(w / 2, d / 2 - r); sh.quadraticCurveTo(w / 2, d / 2, w / 2 - r, d / 2); sh.lineTo(-w / 2 + r, d / 2); sh.quadraticCurveTo(-w / 2, d / 2, -w / 2, d / 2 - r);
+    sh.lineTo(-w / 2, -d / 2 + r); sh.quadraticCurveTo(-w / 2, -d / 2, -w / 2 + r, -d / 2);
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.55, bevelEnabled: true, bevelThickness: 0.18, bevelSize: 0.22, bevelSegments: 4, curveSegments: 10 });
+    geo.rotateX(-Math.PI / 2);
+    const plate = new THREE.Mesh(geo, glassMat); plate.position.set((x0 + x1) / 2, g * GY - 0.4, 1.4); group.add(plate);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), edgeMat); edges.position.copy(plate.position); group.add(edges);
+    plate.userData.born = Math.min(...M.people.filter(p => p.gen === g && !p.mi).map(p => p.born).concat(9999)); edges.userData.born = plate.userData.born;
+    plates.push(plate, edges);
+  }
+  // Pins of light under each person and bloodline links between plates
+  const pinGeo = new THREE.CylinderGeometry(0.07, 0.07, 1, 6); pinGeo.translate(0, 0.5, 0);
+  const pins = new THREE.InstancedMesh(pinGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.6, 1.6) }), M.n);
+  const mtx = new THREE.Matrix4();
+  M.people.forEach((p, i) => { const c = at[p.id]; mtx.makeScale(1, 2.2, 1).setPosition(c.x, c.y - 2.6, c.z); pins.setMatrixAt(i, mtx); pins.setColorAt(i, lin(FAM[p.fam].c)); });
+  group.add(pins);
+  const B = lineBuilder();
+  M.people.forEach(p => {
+    if (p.mi || !p.parent) return; const a = at[p.parent], c = at[p.id];
+    addCurveLine(B, new THREE.CubicBezierCurve3(a, a.clone().add(new THREE.Vector3(0, GY * 0.55, -2)), c.clone().add(new THREE.Vector3(0, -GY * 0.55, -2)), c), M.n > 100 ? 10 : 22, p.born, p.id, lin(pp.glow));
+  });
+  const lines = flowLines(B); lines.material.uniforms.uBase.value = 0.5; group.add(lines);
+  const sky = skyDome(pp.top, pp.hor, pp.ground); group.add(sky);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(600, 64), new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, uniforms: { uC: { value: lin(pp.ground) }, uG: { value: lin(pp.glow) } },
+    vertexShader: `varying vec2 vP; void main() { vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+    fragmentShader: `uniform vec3 uC, uG; varying vec2 vP; void main() { float r = length(vP); vec2 gr = abs(fract(vP / 8.) - .5);
+      float line = smoothstep(.485, .5, max(gr.x, gr.y)); vec3 c = mix(uC, uG * .5, line * .16 * (1. - smoothstep(30., 160., r)));
+      gl_FragColor = vec4(c, 1. - smoothstep(260., 600., r)); }`,
+  }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -6; group.add(floor);
+  const tint = () => {
+    const q2 = pal(); glassMat.uniforms.uTint.value.copy(lin(q2.plate)); glassMat.uniforms.uGlow.value.copy(lin(q2.glow)); glassMat.uniforms.uBody.value = isDark() ? 0.1 : 0.22; edgeMat.color.copy(lin(q2.glow)).multiplyScalar(1.8);
+    lines.geometry.getAttribute('aCol').array.fill(0); // recolour lines to the theme glow
+    const gc = lin(q2.glow), arr = lines.geometry.getAttribute('aCol').array; for (let i = 0; i < arr.length; i += 3) { arr[i] = gc.r; arr[i + 1] = gc.g; arr[i + 2] = gc.b; }
+    lines.geometry.getAttribute('aCol').needsUpdate = true;
+    sky.material.uniforms.uTop.value.copy(lin(q2.top)); sky.material.uniforms.uHor.value.copy(lin(q2.hor)); sky.material.uniforms.uGround.value.copy(lin(q2.ground));
+    floor.material.uniforms.uC.value.copy(lin(q2.ground)); floor.material.uniforms.uG.value.copy(lin(q2.glow)); bloom.strength = q2.bloom * 0.9; renderer.toneMappingExposure = q2.exposure;
+  };
+  const yearHook = yr => {
+    plates.forEach(o => (o.visible = o.userData.born <= yr + 0.5));
+    M.people.forEach((p, i) => { const c = at[p.id], s = p.born <= yr ? 2.2 : 0.0001; mtx.makeScale(1, s, 1).setPosition(c.x, c.y - 2.6, c.z); pins.setMatrixAt(i, mtx); });
+    pins.instanceMatrix.needsUpdate = true;
+  };
+  const top = M.maxGen * GY;
+  return {
+    key: 'glass', group, pos, size: M.n > 100 ? 1.25 : 1.8, style: 0, lift: 8, tint, yearHook, labelUp: true,
+    hiTargets: [{ geo: lines.geometry }], focusMats: [lines.material],
+    view: { target: new THREE.Vector3(0, top * 0.56, 0), cam: new THREE.Vector3(W * 0.36, top * 0.95 + 12, W * 0.72 + 48) },
+    follow: 22,
+  };
+}
+
+// ======================= Shared pieces for the newer scenes =======================
+// Frosted glass: tinted body, Fresnel-bright edges, soft moving sheen
+function glassShader(tint, glow, body) {
+  return new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { uTint: { value: lin(tint) }, uGlow: { value: lin(glow) }, uTime: U.uTime, uBody: { value: body } },
+    vertexShader: `varying vec3 vN, vW; void main() { vN = normalize(mat3(modelMatrix) * normal); vec4 w = modelMatrix * vec4(position, 1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `uniform vec3 uTint, uGlow; uniform float uTime, uBody; varying vec3 vN, vW;
+      void main() { vec3 n = normalize(vN), V = normalize(cameraPosition - vW); float fr = pow(1. - abs(dot(n, V)), 2.4);
+        float sheen = smoothstep(.0, 1., sin(vW.x * .05 + vW.y * .09 - uTime * .25) * .5 + .5) * .1;
+        vec3 c = uTint * (uBody + fr * .9) + uGlow * (fr * .35 + sheen); gl_FragColor = vec4(c, clamp(uBody + fr * .55 + sheen, 0., .85)); }`,
+  });
+}
+// Text sign drawn on a canvas
+function textSprite(text, color, h, bg) {
+  const c = document.createElement('canvas'), g = c.getContext('2d'), fs = 48;
+  g.font = `600 ${fs}px "IBM Plex Sans Arabic", sans-serif`; c.width = Math.ceil(g.measureText(text).width + 40); c.height = fs + 28;
+  if (bg) { g.fillStyle = bg; g.beginPath(); g.roundRect(2, 2, c.width - 4, c.height - 4, 16); g.fill(); }
+  g.font = `600 ${fs}px "IBM Plex Sans Arabic", sans-serif`; g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.direction = S.lang === 'ar' ? 'rtl' : 'ltr'; g.fillText(text, c.width / 2, c.height / 2 + 2);
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false, toneMapped: false }));
+  s.scale.set((h * c.width) / c.height, h, 1); return s;
+}
+const spouseIndex = p => (p.anchor ? M.byId[p.anchor].spouses.findIndex(s => s.id === p.id) : 0);
+const spouseYear = p => (p.anchor ? M.byId[p.anchor].spouses.find(s => s.id === p.id)?.year : null) ?? p.born + 22;
+// Builder that also carries a colour per vertex (for ribbons)
+function tubeColored(B, curve, r0, r1, segs, radial, birth, key, color) {
+  const before = B.pos.length / 3; tube(B, curve, r0, r1, segs, radial, birth, key);
+  const added = B.pos.length / 3 - before; B.col ||= [];
+  for (let i = 0; i < added; i++) B.col.push(color.r, color.g, color.b);
+}
+
+// ======================= Scene: Time River =======================
+// Time becomes distance: each person is a ribbon from birth to death; children branch off their parent's ribbon.
+function riverScene() {
+  const pp = pal(), group = new THREE.Group(), pos = new Float32Array(M.n * 3);
+  const mid = (M.minYear - 3 + 2026) / 2, k = M.n > 100 ? 0.85 : 1.15, X = y => (y - mid) * k;
+  // Every life gets its own lane: a person, their spouses half a lane below, then each child's line in turn (no two ribbons share a lane)
+  const lane = M.n > 100 ? 0.8 : 4.2, z = {}; let L = 0;
+  const visit = id => { const p = M.byId[id]; z[id] = L; const sp = p.spouses.filter(s => M.byId[s.id].mi);
+    sp.forEach((s, j) => (z[s.id] = L + (j + 1) / (sp.length + 1))); L += 1; p.kids.forEach(visit); };
+  visit(M.root.id);
+  M.people.forEach(p => { if (z[p.id] === undefined) z[p.id] = L++; });
+  Object.keys(z).forEach(id => (z[id] = (z[id] - L / 2) * lane));
+  const BR = 1.2, startX = p => X(p.mi ? spouseYear(p) : p.born);
+  const appear = new Float32Array(M.n);
+  M.people.forEach((p, i) => {
+    const sx = p.mi ? startX(p) : p.parent ? Math.min(startX(p) + BR, X(p.died ?? 2026)) : startX(p);
+    pos[i * 3] = sx; pos[i * 3 + 1] = M.n > 100 ? 1.2 : 2.1; pos[i * 3 + 2] = z[p.id];
+    appear[i] = sx / k + mid; // the portrait shows when the "now" curtain reaches it
+  });
+  const B = builder(), r = M.n > 100 ? 0.13 : 0.3, V = (x, zz) => new THREE.Vector3(x, 0.25, zz);
+  M.people.forEach(p => {
+    const end = X(p.died ?? 2026), s = startX(p), col = lin(FAM[p.fam].c), zS = z[p.id];
+    let pts;
+    if (p.mi) pts = [V(s - 3.5, zS + Math.sign(zS - (z[p.anchor] ?? 0) || 1) * 4), V(s, zS)];
+    else if (p.parent) { const b = Math.min(BR, Math.max(0.3, end - s)); pts = [V(s, z[p.parent]), V(s + b * 0.5, (z[p.parent] + zS) / 2), V(s + b, zS)]; }
+    else pts = [V(s - 2, zS), V(s, zS)];
+    const last = pts[pts.length - 1];
+    if (end > last.x + 1) { pts.push(V((last.x + end) / 2, zS), V(end, zS)); }
+    const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal'), len = curve.getLength();
+    tubeColored(B, curve, r, r, Math.max(10, Math.ceil(len / 1.6)), M.n > 100 ? 5 : 8, p.born, p.id, col);
+  });
+  const g = bake(B); g.setAttribute('aCol', new THREE.Float32BufferAttribute(B.col, 3));
+  const ribbonMat = new THREE.ShaderMaterial({
+    uniforms: { ...U, ...FOG, uMid: { value: mid }, uK: { value: k }, uFocus: { value: 0 } },
+    vertexShader: /* glsl */`attribute float aHi; attribute vec3 aCol; varying vec3 vW, vN, vCol; varying float vHi, vDepth;
+      void main() { vCol = aCol; vHi = aHi; vN = normalize(mat3(modelMatrix) * normal); vec4 w = modelMatrix * vec4(position, 1.); vW = w.xyz;
+        vec4 mv = viewMatrix * w; vDepth = -mv.z; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: /* glsl */`uniform float uYear, uEnter, uMinYear, uTime, uMid, uK, uFocus, uFogNear, uFogFar; uniform vec3 uFogColor;
+      varying vec3 vW, vN, vCol; varying float vHi, vDepth;
+      void main() { float yr = mix(uMinYear - 3., uYear, uEnter); float front = (yr - uMid) * uK; if (vW.x > front + .15) discard;
+        vec3 n = normalize(vN); float dif = max(dot(n, normalize(vec3(.3, .9, .4))), 0.);
+        vec3 col = vCol * (.35 + .75 * dif);
+        float flow = smoothstep(.85, 1., fract(vW.x * .07 - uTime * .45)); col += vCol * flow * .45;
+        col += vCol * 2.2 * smoothstep(front - 2.5, front, vW.x);
+        col = mix(col, col * 1.3 + vCol * .5, vHi); col = mix(col, col * .3, uFocus * (1. - step(.5, vHi)));
+        gl_FragColor = vec4(mix(col, uFogColor, smoothstep(uFogNear, uFogFar, vDepth)), 1.); }`,
+  });
+  group.add(new THREE.Mesh(g, ribbonMat));
+  const zMin = Math.min(...Object.values(z)) - 10, zMax = Math.max(...Object.values(z)) + 10;
+  // The "now" curtain that rides the year slider
+  const curtain = new THREE.Mesh(new THREE.PlaneGeometry(zMax - zMin, 16), new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+    uniforms: { uGlow: { value: lin(pp.glow) }, uTime: U.uTime },
+    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+    fragmentShader: `uniform vec3 uGlow; uniform float uTime; varying vec2 vUv; void main() { float edge = smoothstep(.0, .06, vUv.x) * smoothstep(1., .94, vUv.x);
+      float scan = .5 + .5 * sin(vUv.y * 60. - uTime * 2.); float a = (1. - vUv.y) * .22 * edge * (.7 + .3 * scan) + smoothstep(.02, 0., vUv.y) * .6;
+      gl_FragColor = vec4(uGlow * a, 1.); }`,
+  }));
+  curtain.rotation.y = Math.PI / 2; curtain.position.set(0, 8, (zMin + zMax) / 2); group.add(curtain);
+  // Decade lines and labels on the water
+  const dl = [];
+  for (let y = Math.ceil((M.minYear - 3) / 10) * 10; y <= 2026; y += 10) {
+    dl.push(X(y), 0.02, zMin, X(y), 0.02, zMax);
+    const tsp = textSprite(`${y}`, isDark() ? '#9fb3bd' : '#5a6a74', M.n > 100 ? 3.2 : 2.2); tsp.position.set(X(y), 1.4, zMax + 2.5); group.add(tsp);
+  }
+  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(dl, 3)),
+    new THREE.LineBasicMaterial({ color: lin(pp.ring), transparent: true, opacity: 0.6 })));
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), new THREE.ShaderMaterial({
+    uniforms: { ...FOG, uC: { value: lin(pp.ground) }, uG: { value: lin(pp.glow) }, uTime: U.uTime },
+    vertexShader: `varying vec2 vP; varying float vDepth; void main() { vP = position.xy; vec4 mv = modelViewMatrix * vec4(position, 1.); vDepth = -mv.z; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 uC, uG, uFogColor; uniform float uTime, uFogNear, uFogFar; varying vec2 vP; varying float vDepth;
+      void main() { float w = sin(vP.x * 1.3 + uTime * .8 + sin(vP.y * .7) * 2.) * sin(vP.y * 1.7 - uTime * .5);
+        vec3 c = uC + uG * .025 * smoothstep(.75, 1., w); gl_FragColor = vec4(mix(c, uFogColor, smoothstep(uFogNear, uFogFar, vDepth)), 1.); }`,
+  }));
+  water.rotation.x = -Math.PI / 2; water.position.y = -0.2; group.add(water);
+  const sky = skyDome(pp.top, pp.hor, pp.ground); group.add(sky);
+  const tint = () => {
+    const q = pal(); [ribbonMat, water.material].forEach(m => { m.uniforms.uFogColor.value.copy(lin(q.fog)); m.uniforms.uFogNear.value = q.fogNear; m.uniforms.uFogFar.value = q.fogFar * 1.3; });
+    water.material.uniforms.uC.value.copy(lin(q.ground)); curtain.material.uniforms.uGlow.value.copy(lin(q.glow));
+    sky.material.uniforms.uTop.value.copy(lin(q.top)); sky.material.uniforms.uHor.value.copy(lin(q.hor)); sky.material.uniforms.uGround.value.copy(lin(q.ground));
+    bloom.strength = q.bloom; renderer.toneMappingExposure = q.exposure;
+  };
+  const span = X(2026) - X(M.minYear), wz = zMax - zMin;
+  return {
+    key: 'river', group, pos, size: M.n > 100 ? 1.1 : 1.7, style: 0, lift: 5, tint, labelUp: true,
+    update: () => { curtain.position.x = X(effYear()); },
+    hiTargets: [{ geo: g, perPerson: true }], focusMats: [ribbonMat], appear,
+    view: { target: new THREE.Vector3(X(1968), 0, 0), cam: new THREE.Vector3(X(1968) - span * 0.12, span * 0.42 + wz * 0.25, wz * 0.45 + span * 0.36) },
+    follow: 34,
+  };
+}
+
+// ======================= Scene: Hourglass =======================
+// One person in the waist: ancestors fill the dome above, descendants the bowl below. Clicking someone recentres it.
+function hourScene() {
+  const pp = pal(), group = new THREE.Group(), pos = new Float32Array(M.n * 3);
+  const f = M.byId[S.sel] || M.root, at = {}, Vv = (x, y, zz) => new THREE.Vector3(x, y, zz), STEP = 7.5;
+  at[f.id] = Vv(0, 0, 0);
+  let up = 0, downD = 0;
+  const anc = (id, k, s0, s1) => {
+    const par = M.byId[id].parents.slice().sort((a, b) => (M.byId[a].mi ? 1 : 0) - (M.byId[b].mi ? 1 : 0));
+    par.forEach((pid, j) => {
+      if (at[pid]) return; const a0 = s0 + ((s1 - s0) * j) / par.length, a1 = s0 + ((s1 - s0) * (j + 1)) / par.length, th = ((a0 + a1) / 2) * Math.PI * 2, r = 4 + k * 6;
+      at[pid] = Vv(Math.cos(th) * r, k * STEP, Math.sin(th) * r); up = Math.max(up, k); anc(pid, k + 1, a0, a1);
+    });
+  };
+  anc(f.id, 1, 0, 1);
+  const memo = {}, dl = id => (memo[id] ??= M.byId[id].children.length ? M.byId[id].children.reduce((s, c) => s + dl(c), 0) : 1);
+  const desc = (id, k, s0, s1) => {
+    let a = s0; const tot = dl(id);
+    M.byId[id].children.forEach(c => {
+      const w = ((s1 - s0) * dl(c)) / tot; if (!at[c]) { const th = (a + w / 2) * Math.PI * 2, r = 4 + k * (M.n > 100 ? 8 : 6.5); at[c] = Vv(Math.cos(th) * r, -k * STEP, Math.sin(th) * r); downD = Math.max(downD, k); desc(c, k + 1, a, a + w); }
+      a += w;
+    });
+  };
+  desc(f.id, 1, 0, 1);
+  // The glass, sized from the depth of the lines; then each person's radius follows the cone at their height
+  const Hu = Math.max(up, 1) * STEP + 5, Hd = Math.max(downD, 1) * STEP + 5;
+  const Ru = 8 + Math.max(up, 1) * 6 + 4, Rd = 8 + Math.max(downD, 1) * (M.n > 100 ? 8 : 6.5) + 4;
+  const coneR = y => 1.4 + (y > 0 ? (Ru - 1.4) * (y / Hu) : (Rd - 1.4) * (-y / Hd));
+  Object.keys(at).forEach(id => { if (id === f.id) return; const a = at[id], rr = Math.hypot(a.x, a.z) || 1, kk = (coneR(a.y) * 0.78) / rr; a.x *= kk; a.z *= kk; });
+  // Spouses beside their partner
+  Object.keys({ ...at }).forEach(id => M.byId[id].spouses.forEach((s, j) => {
+    if (at[s.id]) return; const a = at[id], out = Vv(a.x, 0, a.z); if (out.lengthSq() < 0.01) out.set(1, 0, 0); out.normalize();
+    at[s.id] = a.clone().addScaledVector(Vv(-out.z, 0, out.x), (j % 2 ? -1 : 1) * (2.8 + Math.floor(j / 2) * 2.4)).add(Vv(0, 0.6, 0));
+  }));
+  // Siblings on a ring at the waist
+  const sibs = [...new Set(f.parents.flatMap(pid => M.byId[pid].children))].filter(id => id !== f.id && !at[id]);
+  sibs.forEach((id, j) => { const th = Math.PI * (0.25 + (1.5 * (j + 0.5)) / Math.max(1, sibs.length)); at[id] = Vv(Math.cos(th) * 11, 0, Math.sin(th) * 11); });
+  const Rmax = 4 + Math.max(up, downD, 1) * 7 + 10;
+  // Everyone else: a faint outer ring, the wider family
+  const rest = M.people.filter(p => !at[p.id]);
+  rest.forEach((p, j) => { const th = (j / Math.max(1, rest.length)) * Math.PI * 2, rr = Rmax + 14 + (j % 3) * 3; at[p.id] = Vv(Math.cos(th) * rr, ((j % 5) - 2) * 1.2, Math.sin(th) * rr); });
+  M.people.forEach((p, i) => { pos[i * 3] = at[p.id].x; pos[i * 3 + 1] = at[p.id].y; pos[i * 3 + 2] = at[p.id].z; });
+  // Links between parent and child where both sit in the hourglass
+  const B = lineBuilder(), core = new Set([f.id, ...Object.keys(at).filter(id => !rest.includes(M.byId[id]))]);
+  M.people.forEach(p => p.parents.forEach(pid => {
+    if (!core.has(p.id) || !core.has(pid) || rest.includes(p) || rest.includes(M.byId[pid])) return;
+    const a = at[pid], c = at[p.id], m = a.clone().lerp(c, 0.5).multiplyScalar(0.8);
+    addCurveLine(B, new THREE.QuadraticBezierCurve3(a, m, c), 16, p.born, p.id, lin(pp.glow));
+  }));
+  const lines = flowLines(B); lines.material.uniforms.uBase.value = 0.5; group.add(lines);
+  // The glass: two open cones meeting at the waist
+  const gm = glassShader(pp.plate, pp.glow, isDark() ? 0.05 : 0.12);
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(Ru, 1.4, Hu, 72, 1, true), gm); top.position.y = Hu / 2; group.add(top);
+  const bot = new THREE.Mesh(new THREE.CylinderGeometry(1.4, Rd, Hd, 72, 1, true), gm); bot.position.y = -Hd / 2; group.add(bot);
+  [Hu, -Hd].forEach((y, i) => { const ring = new THREE.Mesh(new THREE.TorusGeometry(i ? Rd : Ru, 0.18, 8, 96), new THREE.MeshBasicMaterial({ color: lin('#e2b05a').multiplyScalar(1.6) })); ring.rotation.x = Math.PI / 2; ring.position.y = y; group.add(ring); });
+  // Sand: heritage falling from ancestors to descendants through the waist
+  const sN = 900, sp = new Float32Array(sN * 3), sph = new Float32Array(sN), sr = rng(4);
+  for (let i = 0; i < sN; i++) sph[i] = sr();
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3)); sg.setAttribute('aPh', new THREE.BufferAttribute(sph, 1));
+  const sand = new THREE.Points(sg, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: U.uTime, uHu: { value: Hu }, uHd: { value: Hd }, uRu: { value: Ru }, uRd: { value: Rd }, uCol: { value: lin('#f0c060') } },
+    vertexShader: `attribute float aPh; uniform float uTime, uHu, uHd, uRu, uRd; varying float vA;
+      void main() { float t = fract(uTime * .06 + aPh); float y = t < .5 ? mix(uHu * .9, 0., t * 2.) : mix(0., -uHd * .9, (t - .5) * 2.);
+        float w = t < .5 ? (1. - t * 2.) * uRu * .7 : (t - .5) * 2. * uRd * .7; float a = aPh * 61. + t * 4.; float rr = w * fract(aPh * 13.7);
+        vec3 p = vec3(cos(a) * rr, y, sin(a) * rr); vA = .5 + .5 * sin(aPh * 40. + uTime);
+        vec4 mv = modelViewMatrix * vec4(p, 1.); gl_PointSize = 60. / -mv.z * (.6 + vA); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 uCol; varying float vA; void main() { float d = length(gl_PointCoord - .5); if (d > .5) discard; gl_FragColor = vec4(uCol * 1.6 * (1. - d * 2.) * vA, 1.); }`,
+  }));
+  sand.frustumCulled = false; group.add(sand);
+  const sky = skyDome(pp.top, pp.hor, pp.ground); group.add(sky);
+  const tint = () => { const q = pal(); sky.material.uniforms.uTop.value.copy(lin(q.top)); sky.material.uniforms.uHor.value.copy(lin(q.hor)); sky.material.uniforms.uGround.value.copy(lin(q.ground));
+    gm.uniforms.uTint.value.copy(lin(q.plate)); gm.uniforms.uGlow.value.copy(lin(q.glow)); gm.uniforms.uBody.value = isDark() ? 0.05 : 0.12; bloom.strength = q.bloom; renderer.toneMappingExposure = q.exposure; };
+  const D = Rmax * 1.25 + 30;
+  return {
+    key: 'hour', group, pos, size: M.n > 100 ? 1.25 : 1.8, style: 0, lift: 6, tint, focus: f.id,
+    hiTargets: [{ geo: lines.geometry }], focusMats: [lines.material],
+    view: { target: Vv(0, (Hu - Hd) / 4, 0), cam: Vv(D * 0.75, (Hu - Hd) / 4 + D * 0.18, D * 0.95) },
+    follow: 30,
+  };
+}
+
+// ======================= Scene: Heritage City =======================
+// Every person is a tower; its height is the size of their line. Windows go dark when they die; bridges join parent and child.
+function cityScene() {
+  const pp = pal(), group = new THREE.Group(), pos = new Float32Array(M.n * 3), big = M.n > 100, r = rng(21);
+  const W = Math.max(60, M.root.leaves * (big ? 3.3 : 8)), DZ = big ? 9 : 13, foot = big ? 1.5 : 3.2;
+  const base = {}, hgt = {};
+  M.people.forEach(p => { if (!p.mi) { base[p.id] = new THREE.Vector3((p.ang - 0.5) * W, 0, (p.gen - Math.floor(M.maxGen / 2)) * DZ); hgt[p.id] = (big ? 2.5 : 4) + Math.sqrt(p.leaves) * (big ? 3.6 : 6.5) + r() * 1.5; } });
+  M.people.forEach(p => { if (p.mi) { const i = spouseIndex(p), a = base[p.anchor] ?? new THREE.Vector3(); base[p.id] = a.clone().add(new THREE.Vector3((i % 2 ? -1 : 1) * foot * 1.15, 0, foot * 0.9 + Math.floor(i / 2) * foot)); hgt[p.id] = (hgt[p.anchor] ?? 6) * 0.45 + 1.5; } });
+  const geo = new THREE.BoxGeometry(1, 1, 1); geo.translate(0, 0.5, 0);
+  const n = M.n, ab = new Float32Array(n), ad = new Float32Array(n), as = new Float32Array(n), ac = new Float32Array(n * 3);
+  geo.setAttribute('aBirth', new THREE.InstancedBufferAttribute(ab, 1)); geo.setAttribute('aDeath', new THREE.InstancedBufferAttribute(ad, 1));
+  geo.setAttribute('aSeed', new THREE.InstancedBufferAttribute(as, 1)); geo.setAttribute('aCol', new THREE.InstancedBufferAttribute(ac, 3));
+  geo.setAttribute('aHi', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+  geo.userData.keys = M.people.map(p => p.id);
+  const towerMat = new THREE.ShaderMaterial({
+    uniforms: { ...U, ...FOG, uWall: { value: new THREE.Color() }, uWin: { value: lin('#ffc870') }, uNight: { value: 1 }, uFocus: { value: 0 } },
+    vertexShader: /* glsl */`attribute float aBirth, aDeath, aSeed, aHi; attribute vec3 aCol; uniform float uYear, uEnter, uMinYear;
+      varying vec3 vW, vN, vCol; varying float vDead, vSeed, vHi, vTop, vDepth;
+      void main() { float yr = mix(uMinYear - 3., uYear, uEnter); float grow = smoothstep(aBirth, aBirth + 2.5, yr);
+        vec3 p = position * vec3(grow, max(grow, .001), grow); vTop = position.y;
+        vec4 w = modelMatrix * instanceMatrix * vec4(p, 1.); vW = w.xyz; vN = normalize(mat3(modelMatrix * instanceMatrix) * normal);
+        vCol = aCol; vDead = step(aDeath, yr); vSeed = aSeed; vHi = aHi; vec4 mv = viewMatrix * w; vDepth = -mv.z; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: /* glsl */`uniform vec3 uWall, uWin, uFogColor; uniform float uFogNear, uFogFar, uFocus, uNight;
+      varying vec3 vW, vN, vCol; varying float vDead, vSeed, vHi, vTop, vDepth;
+      ${NOISE}
+      void main() { vec3 n = normalize(vN); vec3 col; float shade = .55 + .45 * max(dot(n, normalize(vec3(.4, .8, .3))), 0.);
+        if (n.y > .5) col = vCol * (.55 + .5 * vHi) + uWall * .3;
+        else {
+          vec2 fc = vec2(abs(n.x) > .5 ? vW.z : vW.x, vW.y); vec2 cell = floor(fc / vec2(.8, 1.1)), gg = fract(fc / vec2(.8, 1.1));
+          float win = step(.2, gg.x) * step(gg.x, .78) * step(.28, gg.y) * step(gg.y, .8) * step(.6, vW.y);
+          float on = step(.4, hash(cell + vSeed * 17.)) * (1. - vDead * .92);
+          col = uWall * shade + win * on * uWin * (1.2 + .8 * hash(cell * 3.1)) * uNight + win * (1. - on) * uWall * .35;
+          col += vCol * smoothstep(.9, 1., vTop) * 1.1;
+          col = mix(col, col * 1.2 + vCol * .25, vHi);
+        }
+        col = mix(col, col * .35, uFocus * (1. - step(.5, vHi)));
+        gl_FragColor = vec4(mix(col, uFogColor, smoothstep(uFogNear, uFogFar, vDepth)), 1.); }`,
+  });
+  const towers = new THREE.InstancedMesh(geo, towerMat, n), mtx = new THREE.Matrix4();
+  M.people.forEach((p, i) => {
+    const b = base[p.id], f = p.mi ? foot * 0.7 : foot; mtx.makeScale(f, hgt[p.id], f).setPosition(b.x, 0, b.z); towers.setMatrixAt(i, mtx);
+    ab[i] = p.born; ad[i] = p.died ?? 9999; as[i] = r() * 10; const c = lin(FAM[p.fam].c); ac[i * 3] = c.r; ac[i * 3 + 1] = c.g; ac[i * 3 + 2] = c.b;
+    pos[i * 3] = b.x; pos[i * 3 + 1] = hgt[p.id] + (big ? 1.6 : 2.6); pos[i * 3 + 2] = b.z;
+  });
+  towers.frustumCulled = false; group.add(towers);
+  // Light bridges from each parent's roof to each child's roof
+  const B = lineBuilder();
+  M.people.forEach(p => {
+    if (p.mi || !p.parent) return; const a = base[p.parent].clone().setY(hgt[p.parent]), c = base[p.id].clone().setY(hgt[p.id]);
+    addCurveLine(B, new THREE.CubicBezierCurve3(a, a.clone().setY(a.y + 7), c.clone().setY(c.y + 7), c), big ? 10 : 20, p.born, p.id, lin('#ffc870'));
+  });
+  const lines = flowLines(B); lines.material.uniforms.uBase.value = 0.45; group.add(lines);
+  // Family businesses as glowing shopfronts with a sign
+  const shops = [];
+  M.biz.forEach(bz => {
+    const owners = bz.owners.map(o => base[o]).filter(Boolean); if (!owners.length) return;
+    const c = owners.reduce((s, v) => s.add(v), new THREE.Vector3()).multiplyScalar(1 / owners.length).add(new THREE.Vector3(0, 0, DZ * 0.5));
+    const shop = new THREE.Mesh(new THREE.BoxGeometry(6, 2.2, 3), new THREE.MeshBasicMaterial({ color: lin('#e2b05a').multiplyScalar(1.4) })); shop.position.copy(c).setY(0.9);
+    const sign = textSprite(bz[S.lang], '#1b1408', 2.6, 'rgba(255,214,140,0.95)'); sign.position.copy(c).setY(4.4);
+    shop.userData.year = sign.userData.year = bz.year; sign.userData.biz = bz; group.add(shop, sign); shops.push(shop, sign);
+  });
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), new THREE.ShaderMaterial({
+    uniforms: { ...FOG, uC: { value: lin(pp.ground) }, uL: { value: lin('#ffc870') }, uDZ: { value: DZ } },
+    vertexShader: `varying vec2 vP; varying float vDepth; void main() { vP = position.xy; vec4 mv = modelViewMatrix * vec4(position, 1.); vDepth = -mv.z; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 uC, uL, uFogColor; uniform float uDZ, uFogNear, uFogFar; varying vec2 vP; varying float vDepth;
+      void main() { float sy = abs(fract((vP.y + uDZ * .5) / uDZ) - .5) * uDZ; float street = smoothstep(.25, .0, abs(sy - uDZ * .5 + .3));
+        float dash = step(.5, fract(vP.x * .25)); float near = 1. - smoothstep(60., 160., length(vP)); vec3 c = uC + uL * street * dash * .12 * near;
+        gl_FragColor = vec4(mix(c, uFogColor, smoothstep(uFogNear, uFogFar, vDepth)), 1.); }`,
+  }));
+  ground.rotation.x = -Math.PI / 2; group.add(ground);
+  const sky = skyDome(isDark() ? '#050816' : pp.top, isDark() ? '#3a1f33' : pp.hor, pp.ground); group.add(sky);
+  const tint = () => {
+    const q = pal(), dark = isDark();
+    towerMat.uniforms.uWall.value.copy(lin(dark ? '#1b2330' : '#9aa6ad')); towerMat.uniforms.uNight.value = dark ? 1 : 0.18;
+    [towerMat, ground.material].forEach(m => { m.uniforms.uFogColor.value.copy(lin(dark ? '#1a1424' : q.fog)); m.uniforms.uFogNear.value = q.fogNear; m.uniforms.uFogFar.value = q.fogFar; });
+    ground.material.uniforms.uC.value.copy(lin(dark ? '#0b0d13' : '#cfc8bb'));
+    sky.material.uniforms.uTop.value.copy(lin(dark ? '#050816' : q.top)); sky.material.uniforms.uHor.value.copy(lin(dark ? '#3a1f33' : q.hor)); sky.material.uniforms.uGround.value.copy(lin(q.ground));
+    bloom.strength = dark ? 0.85 : 0.15; renderer.toneMappingExposure = q.exposure;
+  };
+  const yearHook = yr => shops.forEach(o => (o.visible = yr >= o.userData.year));
+  const relang = () => shops.forEach(o => { if (!o.userData.biz) return; const fresh = textSprite(o.userData.biz[S.lang], '#1b1408', 2.6, 'rgba(255,214,140,0.95)');
+    o.material.map.dispose(); o.material.map = fresh.material.map; o.scale.copy(fresh.scale); fresh.material.dispose(); });
+  const depth = (M.maxGen + 1) * DZ, tallest = Math.max(...Object.values(hgt));
+  return {
+    key: 'city', group, pos, size: big ? 1.15 : 1.75, style: 0, lift: 7, tint, yearHook, relang, labelUp: true,
+    hiTargets: [{ geo, perPerson: true }, { geo: lines.geometry }], focusMats: [towerMat, lines.material],
+    view: { target: new THREE.Vector3(0, tallest * 0.3, 0), cam: new THREE.Vector3(W * 0.42, tallest * 1.4 + depth * 0.55, depth * 0.8 + W * 0.42) },
+    follow: 36,
+  };
+}
+
+// ======================= Scene: Girih Mandala =======================
+// The family as an Islamic eight-point star pattern: founders at the centre, each generation a ring of enamel tiles.
+function mandalaScene() {
+  const pp = pal(), group = new THREE.Group(), pos = new Float32Array(M.n * 3), big = M.n > 100;
+  const spread = Math.max(1, Math.sqrt(M.n / 30)), R = g => g * (big ? 9 : 11) * spread, at = {};
+  M.people.forEach(p => { if (!p.mi) { const th = p.ang * Math.PI * 2; at[p.id] = p.gen === 0 ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(Math.cos(th) * R(p.gen), 0, Math.sin(th) * R(p.gen)); } });
+  M.people.forEach(p => {
+    if (!p.mi) return; const a = at[p.anchor] ?? new THREE.Vector3(), i = spouseIndex(p), out = a.clone().setY(0);
+    if (out.lengthSq() < 0.01) out.set(1, 0, 0); out.normalize();
+    const gap = (big ? 2.2 : 3.6) * (M.byId[p.anchor]?.gen === 0 ? 1.9 : 1);
+    at[p.id] = a.clone().addScaledVector(new THREE.Vector3(-out.z, 0, out.x), (i % 2 ? -1 : 1) * gap * (1 + Math.floor(i / 2))).addScaledVector(out, big ? 0.8 : 1.6);
+  });
+  // Eight-point star tile (two squares at 45 degrees), extruded with a bevel
+  const star = (rO, rI) => { const s = new THREE.Shape(); for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2 + Math.PI / 16, r = k % 2 ? rI : rO; k ? s.lineTo(Math.cos(a) * r, Math.sin(a) * r) : s.moveTo(Math.cos(a) * r, Math.sin(a) * r); } s.closePath(); return s; };
+  const geo = new THREE.ExtrudeGeometry(star(1, 0.62), { depth: 0.5, bevelEnabled: true, bevelThickness: 0.18, bevelSize: 0.14, bevelSegments: 2 });
+  geo.rotateX(-Math.PI / 2);
+  const n = M.n, ab = new Float32Array(n), ad = new Float32Array(n), ac = new Float32Array(n * 3);
+  geo.setAttribute('aBirth', new THREE.InstancedBufferAttribute(ab, 1)); geo.setAttribute('aDeath', new THREE.InstancedBufferAttribute(ad, 1));
+  geo.setAttribute('aCol', new THREE.InstancedBufferAttribute(ac, 3)); geo.setAttribute('aHi', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+  geo.userData.keys = M.people.map(p => p.id);
+  const tileMat = new THREE.ShaderMaterial({
+    uniforms: { ...U, uGold: { value: lin('#d9a84a') }, uFocus: { value: 0 } },
+    vertexShader: /* glsl */`attribute float aBirth, aDeath, aHi; attribute vec3 aCol; uniform float uYear, uEnter, uMinYear;
+      varying vec3 vN, vCol, vW, vL; varying float vDead, vHi;
+      void main() { float yr = mix(uMinYear - 3., uYear, uEnter); float grow = smoothstep(aBirth, aBirth + 1.6, yr);
+        vec3 p = position * vec3(grow, max(grow, .001), grow); vL = position;
+        vec4 w = modelMatrix * instanceMatrix * vec4(p, 1.); vW = w.xyz; vN = normalize(mat3(modelMatrix * instanceMatrix) * normal);
+        vCol = aCol; vDead = step(aDeath, yr); vHi = aHi; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: /* glsl */`uniform vec3 uGold; uniform float uFocus, uTime; varying vec3 vN, vCol, vW, vL; varying float vDead, vHi;
+      void main() { vec3 n = normalize(vN), V = normalize(cameraPosition - vW), L = normalize(vec3(.3, 1., .4));
+        float dif = max(dot(n, L), 0.), spec = pow(max(dot(reflect(-L, n), V), 0.), 24.);
+        vec3 col;
+        if (n.y > .92 && length(vL.xz) < .62) { vec3 en = vCol; if (vDead > .5) en = mix(en, vec3(dot(en, vec3(.3, .59, .11))), .8) * .7;
+          col = en * (.55 + .5 * dif) + spec * .35; }
+        else col = uGold * (.45 + .8 * dif) + spec * vec3(1., .85, .55) * 1.4;
+        col = mix(col, col * 1.25, vHi); col = mix(col, col * .3, uFocus * (1. - step(.5, vHi)));
+        gl_FragColor = vec4(col, 1.); }`,
+  });
+  const tiles = new THREE.InstancedMesh(geo, tileMat, n), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+  M.people.forEach((p, i) => {
+    const a = at[p.id], s = (p.gen === 0 && !p.mi ? 4.4 : p.mi ? 2 : 3.3) * (big ? 0.55 : 1);
+    q.setFromAxisAngle(up, -Math.atan2(a.z, a.x) - Math.PI / 16); // one star point aims along the ring's radius sc.set(s, s * 0.8, s); mtx.compose(a, q, sc); tiles.setMatrixAt(i, mtx);
+    ab[i] = p.born; ad[i] = p.died ?? 9999; const c = lin(FAM[p.fam].c); ac[i * 3] = c.r; ac[i * 3 + 1] = c.g; ac[i * 3 + 2] = c.b;
+    pos[i * 3] = a.x; pos[i * 3 + 1] = (big ? 2.2 : 4.2) + (p.gen === 0 && !p.mi ? 1 : 0); pos[i * 3 + 2] = a.z;
+  });
+  tiles.frustumCulled = false; group.add(tiles);
+  // Gold threads from parent to child
+  const B = lineBuilder();
+  M.people.forEach(p => {
+    if (p.mi || !p.parent) return; const a = at[p.parent].clone().setY(0.8), c = at[p.id].clone().setY(0.8), m = a.clone().lerp(c, 0.5).setY(2.5);
+    addCurveLine(B, new THREE.QuadraticBezierCurve3(a, m, c), big ? 10 : 18, p.born, p.id, lin('#f0c060'));
+  });
+  const lines = flowLines(B); lines.material.uniforms.uBase.value = 0.5; group.add(lines);
+  // Floor: a slowly turning eight-fold girih lattice with gold generation rings
+  const floorMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: { uTime: U.uTime, uBg: { value: new THREE.Color() }, uGold: { value: lin('#c8963e') }, uStep: { value: R(1) }, uMax: { value: R(M.maxGen) + 14 } },
+    vertexShader: `varying vec2 vP; void main() { vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+    fragmentShader: `uniform float uTime, uStep, uMax; uniform vec3 uBg, uGold; varying vec2 vP;
+      void main() { float c = cos(uTime * .02), s = sin(uTime * .02); vec2 p = mat2(c, -s, s, c) * vP; float r = length(p), a = atan(p.y, p.x);
+        float sec = abs(mod(a, .785398) - .392699); vec2 q = vec2(cos(sec), sin(sec)) * r; float S = 4.2;
+        float l1 = abs(fract((q.x * .3827 + q.y * .9239) / S) - .5), l2 = abs(fract((q.x * .9239 - q.y * .3827) / S) - .5), l3 = abs(fract(q.x / S) - .5);
+        float lat = smoothstep(.05, .0, min(min(l1, l2), l3) - .0);
+        float ring = smoothstep(.12, .0, abs(fract(r / uStep + .5) - .5) * uStep - .1) * step(uStep * .5, r);
+        float fade = 1. - smoothstep(uMax * .55, uMax * 1.05, r);
+        vec3 col = uBg + uGold * (lat * .07 * (1. - smoothstep(uMax * .2, uMax * .9, r)) + ring * .4) * fade; gl_FragColor = vec4(col, 1.); }`,
+  });
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(1200, 128), floorMat); floor.rotation.x = -Math.PI / 2; floor.position.y = -0.05; group.add(floor);
+  const sky = skyDome(pp.top, pp.hor, pp.ground); group.add(sky);
+  const tint = () => { const q2 = pal(); floorMat.uniforms.uBg.value.copy(lin(isDark() ? '#081a20' : '#efe6d4'));
+    sky.material.uniforms.uTop.value.copy(lin(q2.top)); sky.material.uniforms.uHor.value.copy(lin(q2.hor)); sky.material.uniforms.uGround.value.copy(lin(q2.ground));
+    bloom.strength = isDark() ? 0.7 : 0.12; renderer.toneMappingExposure = q2.exposure; };
+  const w = R(M.maxGen) + 10;
+  return {
+    key: 'mandala', group, pos, size: big ? 1.1 : 1.6, style: 0, lift: 5, tint, labelUp: true,
+    hiTargets: [{ geo, perPerson: true }, { geo: lines.geometry }], focusMats: [tileMat, lines.material],
+    view: { target: new THREE.Vector3(0, 0, 0), cam: new THREE.Vector3(w * 0.2, w * 1.75 + 12, w * 0.7) },
+    follow: 30,
+  };
+}
+
+// ======================= Labels: crisp HTML pills, a pool given to the nearest people =======================
+const labelLayer = document.getElementById('labels'), LABELS = [], LPOOL = 48;
+for (let i = 0; i < LPOOL; i++) {
+  const d = document.createElement('div'); d.className = 'lbl'; d.hidden = true; d.innerHTML = '<b></b><span></span>';
+  labelLayer.appendChild(d); LABELS.push({ el: d, i: -1, w: 0, h: 0 });
+}
+function clearLabelCache() { sizeCache?.clear(); LABELS.forEach(L => { L.i = -1; L.on = false; L.el.hidden = true; }); }
+const tmp = new THREE.Vector3(), frustum = new THREE.Frustum(), pm = new THREE.Matrix4();
+// Choose who gets a label: nearest first, skipping any pill that would overlap one already placed
+function updateLabels() {
+  const cur = SC[S.scene]; if (!cur) return;
+  pm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); frustum.setFromProjectionMatrix(pm);
+  const yr = effYear(), cand = [];
+  M.people.forEach((p, i) => {
+    if (appearAt(i) > yr) return; personPos(i, tmp); if (!frustum.containsPoint(tmp)) return;
+    let d = tmp.distanceTo(camera.position);
+    if (S.sel) d *= hiArr[i] > 1.5 ? 0.01 : hiArr[i] > 0.5 ? 0.4 : 3;
+    if (S.hover === p.id) d *= 0.01;
+    cand.push([d, i]);
+  });
+  cand.sort((a, b) => a[0] - b[0]);
+  const boxes = [], limit = M.n > 100 ? 30 : LPOOL; let used = 0;
+  for (const [dist, i] of cand) {
+    if (used >= limit) break;
+    const L = LABELS[used], p = M.people[i], size = labelSize(p);
+    const sc = screenOf(i, cur, size); if (!sc) continue;
+    const pri = S.sel === p.id || S.hover === p.id;
+    if (!pri && boxes.some(o => sc.x < o.x + o.w + 4 && sc.x + size.w + 4 > o.x && sc.y < o.y + o.h + 2 && sc.y + size.h + 2 > o.y)) continue;
+    boxes.push({ x: sc.x, y: sc.y, w: size.w, h: size.h });
+    if (L.i !== i || L.lang !== S.lang) {
+      L.el.firstChild.textContent = full(p); L.el.lastChild.textContent = years(p); L.el.style.setProperty('--fam', FAM[p.fam].c);
+      L.i = i; L.lang = S.lang;
+    }
+    L.w = size.w; L.h = size.h;
+    L.dist = dist; L.el.classList.toggle('dim', !!S.sel && hiArr[i] < 0.5); L.el.classList.toggle('pri', pri);
+    L.el.hidden = false; used++;
+  }
+  for (let k = used; k < LABELS.length; k++) LABELS[k].el.hidden = true;
+  LABELS.forEach((L, k) => (L.on = k < used));
+}
+// Label size from canvas text metrics (no DOM layout), cached per person and language
+const measure = document.createElement('canvas').getContext('2d'), sizeCache = new Map();
+function labelSize(p) {
+  const k = `${p.id}|${S.lang}`; if (sizeCache.has(k)) return sizeCache.get(k);
+  measure.font = '600 12px "IBM Plex Sans Arabic", sans-serif'; const a = measure.measureText(full(p)).width;
+  measure.font = '10.5px "IBM Plex Mono", monospace'; const b = measure.measureText(years(p)).width;
+  const v = { w: Math.ceil(Math.max(a, b) + 20), h: 33 }; sizeCache.set(k, v); return v;
+}
+const _s = new THREE.Vector3();
+function screenOf(i, cur, L) {
+  const p = M.people[i], sz = cur.size * (p.gen === 0 && !p.mi ? 1.35 : p.mi ? 0.85 : 1);
+  personPos(i, _s); _s.y += cur.labelUp ? sz * 1.2 : -sz * 1.15; _s.project(camera);
+  if (_s.z > 1) return null;
+  const r = stage.clientWidth, h = stage.clientHeight;
+  return { x: (_s.x * 0.5 + 0.5) * r - L.w / 2, y: (-_s.y * 0.5 + 0.5) * h - (cur.labelUp ? L.h : 0) };
+}
+// Every frame: keep assigned pills glued to their person
+function placeLabels() {
+  const cur = SC[S.scene]; if (!cur) return;
+  LABELS.forEach(L => {
+    if (!L.on || L.i < 0) return; const sc = screenOf(L.i, cur, L);
+    if (!sc) { L.el.hidden = true; return; }
+    L.el.style.transform = `translate(${sc.x.toFixed(1)}px, ${sc.y.toFixed(1)}px)`;
+  });
+}
+
+// ======================= Scene management =======================
+const SC = {};
+const BUILD = { tree: treeScene, sky: skyScene, glass: glassScene, river: riverScene, hour: hourScene, city: cityScene, mandala: mandalaScene };
+const appearAt = i => medalGeo.getAttribute('aBirth').array[i];
+function dropScene(key) { if (!SC[key]) return; scene.remove(SC[key].group); disposeTree(SC[key].group); delete SC[key]; }
+let hiArr = new Float32Array(0);
+function ensure(key) {
+  if (!SC[key]) { SC[key] = BUILD[key](); SC[key].group.visible = false; scene.add(SC[key].group); }
+  return SC[key];
+}
+function currentPositions() {
+  const out = new Float32Array(M.n * 3);
+  for (let i = 0; i < M.n; i++) { personPos(i, tmp); out[i * 3] = tmp.x; out[i * 3 + 1] = tmp.y; out[i * 3 + 2] = tmp.z; }
+  return out;
+}
+let morph = null, fly = null;
+function setScene(key, instant = false) {
+  if (key === 'hour') { if (!S.sel) { S.sel = M.root.id; S.autoSel = true; } if (SC.hour && SC.hour.focus !== S.sel) dropScene('hour'); }
+  else if (S.autoSel) { S.sel = null; S.autoSel = false; } // the founder was only picked to centre the hourglass
+  const next = ensure(key);
+  if (!instant) posFrom.array.set(currentPositions()); else posFrom.array.set(next.pos);
+  posTo.array.set(next.pos); posFrom.needsUpdate = posTo.needsUpdate = true;
+  medalMat.uniforms.uMorph.value = instant ? 1 : 0; medalMat.uniforms.uLift.value = next.lift;
+  morph = instant || reduced ? null : { t0: performance.now(), d: 1500 };
+  if (reduced) medalMat.uniforms.uMorph.value = 1;
+  Object.values(SC).forEach(s => (s.group.visible = s === next));
+  S.scene = key;
+  medalMat.uniforms.uStyle.value = next.style;
+  const ab = medalGeo.getAttribute('aBirth'); M.people.forEach((p, i) => (ab.array[i] = next.appear ? next.appear[i] : p.born)); ab.needsUpdate = true;
+  medalMat.uniforms.uScale.value = next.size;
+  next.tint();
+  if (next.yearHook) next.yearHook(effYear());
+  applyHighlight();
+  document.querySelectorAll('[data-scene]').forEach(b => b.setAttribute('aria-pressed', b.dataset.scene === key));
+  flyTo(next.view.cam, next.view.target, instant ? 0 : 1700);
+}
+let enter = null;
+function flyTo(cam, target, d = 1200) {
+  const k = Math.pow(Math.max(1, 1.45 / camera.aspect), 0.85); cam = target.clone().add(cam.clone().sub(target).multiplyScalar(k));
+  if (!d || reduced) { fly = null; camera.position.copy(cam); controls.target.copy(target); return; }
+  fly = { t0: performance.now(), d, fc: camera.position.clone(), tc: cam.clone(), ft: controls.target.clone(), tt: target.clone() };
+}
+function flyToPerson(i, d = 1300) {
+  const cur = SC[S.scene]; const p = personPos(i, new THREE.Vector3());
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  if (dir.y < 0.15) dir.y = 0.3; dir.normalize();
+  flyTo(p.clone().addScaledVector(dir, cur.follow), p, d);
+}
+
+// ======================= Selection & lineage =======================
+function lineageOf(id) {
+  const set = new Map(); set.set(id, 2);
+  const up = x => M.byId[x].parents.forEach(pid => { if (!set.has(pid)) { set.set(pid, 1); up(pid); } });
+  const down = x => M.byId[x].children.forEach(k => { if (set.has(k)) return; set.set(k, 1); down(k); });
+  up(id); down(id);
+  M.byId[id].spouses.forEach(s => { if (!set.has(s.id)) set.set(s.id, 1); });
+  return set;
+}
+function applyHighlight() {
+  const set = S.sel ? lineageOf(S.sel) : null, a = medalGeo.getAttribute('aHi');
+  hiArr = a.array;
+  M.people.forEach((p, i) => (a.array[i] = set ? set.get(p.id) || 0 : 0)); a.needsUpdate = true;
+  const focus = S.sel ? 1 : 0; medalMat.uniforms.uFocus.value = focus;
+  Object.values(SC).forEach(sc => {
+    sc.focusMats.forEach(m => m.uniforms.uFocus && (m.uniforms.uFocus.value = focus));
+    sc.hiTargets.forEach(({ geo, perPerson }) => {
+      const keys = geo.userData.keys, arr = geo.getAttribute('aHi').array;
+      for (let k = 0; k < keys.length; k++) {
+        const id = keys[k]; let v = 0;
+        if (set && id && set.has(id) && perPerson) v = 1;
+        else if (set && id && set.has(id)) { const p = M.byId[id]; v = p.mi ? (set.get(p.anchor) ? 1 : 0) : (p.parent && set.has(p.parent)) || set.get(id) === 2 ? 1 : 0; if (M.byId[id] === M.root && set.has(id)) v = 1; }
+        arr[k] = v;
+      }
+      geo.getAttribute('aHi').needsUpdate = true;
+    });
+  });
+  renderCard();
+}
+function select(id, fly = true) {
+  if (id && !M.byId[id]) return;
+  S.autoSel = false;
+  if (S.scene === 'hour' && id && SC.hour?.focus !== id) { S.sel = id; setScene('hour'); return; } // the hourglass recentres on whoever you pick
+  S.sel = id; applyHighlight();
+  if (id && fly) flyToPerson(M.byId[id].idx);
+}
+
+// ======================= UI: card, tooltip, search =======================
+const card = document.getElementById('card'), tip = document.getElementById('tip');
+function countDesc(id) { const seen = new Set(); const d = x => M.byId[x].children.forEach(k => { if (!seen.has(k)) { seen.add(k); d(k); } }); d(id); return seen.size; }
+let cardKey = '';
+function renderCard(force = true) {
+  if (!S.sel) { card.hidden = true; cardKey = ''; return; }
+  const p = M.byId[S.sel], other = S.lang === 'en' ? 'ar' : 'en', yr = Math.round(S.year);
+  const key = `${p.id}|${S.lang}|${p.born > yr ? 0 : p.died && p.died <= yr ? 2 : 1}`;
+  if (!force && key === cardKey) return; cardKey = key;
+  const chips = [`<span class="chip">${p.mi ? t('mi') : t('born')}</span>`, `<span class="chip">${t('gen')} ${p.gen + 1}</span>`];
+  if (p.born > yr) chips.push(`<span class="chip gold">${t('notBorn')}</span>`); else if (p.died && p.died <= yr) chips.push(`<span class="chip gold">${t('deceased')}</span>`);
+  card.innerHTML = `
+    <div class="who"><img src="${thumb(p)}" alt="">
+      <div><h2>${esc(full(p))}</h2><p class="alt" lang="${other}" dir="${other === 'ar' ? 'rtl' : 'ltr'}">${esc(full(p, other))}</p><p class="yrs">${years(p)}</p></div></div>
+    <div class="chips">${chips.join('')}</div>
+    <div class="stats"><div><b>${p.children.length}</b><span>${t('kids')}</span></div><div><b>${countDesc(p.id)}</b><span>${t('desc')}</span></div><div><b>${p.spouses.length}</b><span>${t('spouses')}</span></div></div>
+    <div class="row"><button id="cFly">${t('focus')}</button><button id="cClear">${t('clear')}</button></div>`;
+  card.hidden = false;
+  document.getElementById('cFly').onclick = () => flyToPerson(p.idx);
+  document.getElementById('cClear').onclick = () => select(null);
+}
+function showTip(i, x, y) {
+  if (i == null) { tip.hidden = true; return; }
+  const p = M.people[i];
+  tip.innerHTML = `<img src="${thumb(p)}" alt=""><div><b>${esc(full(p))}</b><span><bdi dir="ltr">${years(p)}</bdi> · ${p.mi ? t('mi') : `${t('gen')} ${p.gen + 1}`}</span></div>`;
+  tip.hidden = false;
+  const r = stage.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+  tip.style.left = `${Math.min(x + 16, r.width - tw - 8)}px`; tip.style.top = `${Math.max(8, y - th - 12)}px`;
+  tip.style.right = 'auto'; tip.style.insetInlineStart = '';
+}
+const qIn = document.getElementById('q'), qList = document.getElementById('qList');
+qIn.addEventListener('input', () => {
+  const s = norm(qIn.value.trim()); if (!s) { qList.hidden = true; return; }
+  const hits = M.people.filter(p => norm(`${p.en} ${FAM[p.fam].en} ${p.ar} ${FAM[p.fam].ar}`).includes(s)).slice(0, 7);
+  qList.innerHTML = hits.length ? hits.map(p => `<li><button data-id="${esc(p.id)}"><img src="${thumb(p)}" alt=""><span>${esc(full(p))}<br><small>${years(p)}</small></span></button></li>`).join('')
+    : `<li style="padding:6px 8px;color:var(--muted);font-size:13px">${t('nothing')}</li>`;
+  qList.hidden = false;
+});
+qList.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (!b) return; qList.hidden = true; qIn.value = ''; select(b.dataset.id); });
+qIn.addEventListener('keydown', e => { if (e.key === 'Escape') { qList.hidden = true; qIn.blur(); } if (e.key === 'Enter') qList.querySelector('button')?.click(); });
+
+// ======================= Picking =======================
+const ndc = new THREE.Vector3();
+function pick(cx, cy) {
+  const r = canvas.getBoundingClientRect(), x = cx - r.left, y = cy - r.top, yr = effYear(), cur = SC[S.scene];
+  const f = r.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  let best = null, bd = Infinity;
+  M.people.forEach((p, i) => {
+    if (appearAt(i) > yr) return; personPos(i, ndc); const dist = ndc.distanceTo(camera.position); ndc.project(camera);
+    if (ndc.z > 1) return;
+    const sx = (ndc.x * 0.5 + 0.5) * r.width, sy = (-ndc.y * 0.5 + 0.5) * r.height;
+    const rad = (cur.size * (p.gen === 0 && !p.mi ? 1.35 : p.mi ? 0.85 : 1) * 2.3 * 0.5 * 0.7 * f) / dist + 3;
+    const d = Math.hypot(sx - x, sy - y); if (d < rad && dist < bd) { bd = dist; best = i; }
+  });
+  return best;
+}
+let down = null, hoverRaf = 0;
+canvas.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY }; stopSpin(); });
+canvas.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) { down = null; return; }
+  down = null; const i = pick(e.clientX, e.clientY); select(i == null ? null : M.people[i].id);
+});
+canvas.addEventListener('pointermove', e => {
+  if (hoverRaf) return;
+  hoverRaf = requestAnimationFrame(() => {
+    hoverRaf = 0; if (down) return;
+    const i = pick(e.clientX, e.clientY), r = stage.getBoundingClientRect();
+    S.hover = i == null ? null : M.people[i].id; canvas.style.cursor = i == null ? '' : 'pointer';
+    showTip(i, e.clientX - r.left, e.clientY - r.top);
+  });
+});
+canvas.addEventListener('pointerleave', () => { cancelAnimationFrame(hoverRaf); hoverRaf = 0; S.hover = null; tip.hidden = true; });
+canvas.addEventListener('pointercancel', () => (down = null));
+let spinTimer = 0;
+function stopSpin() { controls.autoRotate = false; clearTimeout(spinTimer); if (S.spin) spinTimer = setTimeout(() => (controls.autoRotate = S.spin), 6000); }
+
+// ======================= Time =======================
+const yrIn = document.getElementById('yr'), yrOut = document.getElementById('yrOut'), playB = document.getElementById('play');
+function setYearTarget(y) { S.year = y; yrIn.value = Math.round(y); yrOut.textContent = Math.round(y); renderStatus(); if (S.sel) renderCard(false); }
+yrIn.addEventListener('input', () => setYearTarget(+yrIn.value));
+const ICON_PLAY = '<svg class="tri" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/></svg>';
+function playIcon() { playB.innerHTML = S.playing ? ICON_PAUSE : ICON_PLAY; playB.setAttribute('aria-label', S.playing ? t('pause') : t('play')); }
+playB.addEventListener('click', () => { S.playing = !S.playing; if (S.playing && S.year >= 2026) setYearTarget(+yrIn.min); playIcon(); });
+document.getElementById('follow').addEventListener('change', e => (S.follow = e.target.checked));
+function renderStatus() {
+  const y = Math.round(S.year), alive = M.people.filter(p => p.born <= y && !(p.died && p.died <= y)).length;
+  document.getElementById('status').innerHTML = `<b style="color:var(--ink);font-variant-numeric:tabular-nums">${alive}</b> ${t('people')} ${t('alive')} ${y}`;
+}
+function drawHist() {
+  const c = document.getElementById('hist'), r = c.getBoundingClientRect(), dpr = Math.min(devicePixelRatio, 2);
+  c.width = r.width * dpr; c.height = r.height * dpr; const g = c.getContext('2d'); g.scale(dpr, dpr);
+  const y0 = +yrIn.min, y1 = +yrIn.max, nb = y1 - y0 + 1, b = new Array(nb).fill(0), d = new Array(nb).fill(0);
+  M.people.forEach(p => { if (p.born >= y0 && p.born <= y1) b[p.born - y0]++; if (p.died && p.died >= y0 && p.died <= y1) d[p.died - y0]++; });
+  const mx = Math.max(1, ...b, ...d), cs = getComputedStyle(app), bw = r.width / nb;
+  g.clearRect(0, 0, r.width, r.height);
+  for (let i = 0; i < nb; i++) {
+    const hb = (b[i] / mx) * (r.height * 0.62), hd = (d[i] / mx) * (r.height * 0.32);
+    g.fillStyle = cs.getPropertyValue('--accent'); g.fillRect(i * bw, r.height * 0.66 - hb, Math.max(1, bw - 0.6), hb);
+    g.fillStyle = cs.getPropertyValue('--muted'); g.globalAlpha = 0.6; g.fillRect(i * bw, r.height * 0.7, Math.max(1, bw - 0.6), hd); g.globalAlpha = 1;
+  }
+}
+
+// ======================= Language, data set, tools =======================
+function applyI18n() {
+  app.dir = S.lang === 'ar' ? 'rtl' : 'ltr'; app.lang = S.lang;
+  document.querySelectorAll('[data-t]').forEach(n => (n.textContent = t(n.dataset.t)));
+  document.querySelectorAll('[data-tp]').forEach(n => (n.placeholder = t(n.dataset.tp)));
+  document.querySelectorAll('[data-ta]').forEach(n => n.setAttribute('aria-label', t(n.dataset.ta)));
+  document.getElementById('notes').innerHTML = NOTES[S.lang];
+  document.getElementById('legend').innerHTML = `<span><i style="background:var(--accent)"></i>${t('lb')}</span><span><i style="background:var(--muted)"></i>${t('ld')}</span>`;
+  document.getElementById('lEn').setAttribute('aria-pressed', S.lang === 'en'); document.getElementById('lAr').setAttribute('aria-pressed', S.lang === 'ar');
+  Object.values(SC).forEach(sc => sc.relang?.());
+  document.title = t('title'); playIcon(); renderStatus(); renderCard();
+}
+document.getElementById('lEn').onclick = () => { S.lang = 'en'; applyI18n(); };
+document.getElementById('lAr').onclick = () => { S.lang = 'ar'; applyI18n(); };
+document.querySelectorAll('[data-scene]').forEach(b => (b.onclick = () => {
+  if (b.dataset.scene !== S.scene) setScene(b.dataset.scene);
+  else if (S.scene === 'hour' && S.sel !== M.root.id) { S.sel = null; setScene('hour'); } // second click: back to the founder
+}));
+document.getElementById('tFit').onclick = () => { const v = SC[S.scene].view; flyTo(v.cam, v.target, 1200); };
+document.getElementById('tSpin').onclick = e => { S.spin = !S.spin; controls.autoRotate = S.spin; e.currentTarget.setAttribute('aria-pressed', S.spin); };
+document.getElementById('tSpin').setAttribute('aria-pressed', S.spin);
+document.getElementById('tFull').onclick = () => { (document.fullscreenElement ? document.exitFullscreen() : stage.requestFullscreen?.())?.catch?.(() => {}); };
+function loadData(kind) {
+  if (kind === S.data) return;
+  S.data = kind; S.sel = null; S.autoSel = false; S.hover = null; tip.hidden = true; qList.hidden = true; qIn.value = ''; fly = null;
+  M = buildModel(kind === 'sample' ? SAMPLE : synthetic(500));
+  Object.values(SC).forEach(sc => { scene.remove(sc.group); disposeTree(sc.group); });
+  Object.keys(SC).forEach(k => delete SC[k]);
+  thumbCache.clear(); clearLabelCache(); buildAtlas(); buildMedals();
+  U.uMinYear.value = M.minYear; yrIn.min = Math.min(1900, M.minYear - 2); drawHist();
+  document.getElementById('dSample').setAttribute('aria-pressed', kind === 'sample'); document.getElementById('dStress').setAttribute('aria-pressed', kind !== 'sample');
+  quality.level = 2; quality.apply();
+  setScene(S.scene, true); renderStatus();
+}
+document.getElementById('dSample').onclick = () => loadData('sample');
+document.getElementById('dStress').onclick = () => loadData('stress');
+
+// Free GPU memory: geometries, instance buffers, materials and any textures they hold
+function disposeTree(root) {
+  root.traverse(o => {
+    if (o.isInstancedMesh) o.dispose();
+    if (!o.isSprite) o.geometry?.dispose(); // sprites share one geometry across the whole app
+    [].concat(o.material || []).forEach(m => {
+      Object.values(m.uniforms || {}).forEach(u => u.value?.isTexture && u.value.dispose());
+      m.map?.dispose(); m.dispose();
+    });
+  });
+}
+// ======================= Adaptive quality =======================
+const quality = {
+  level: 2, low: 0, since: 0,
+  apply() {
+    const pr = this.level === 2 ? Math.min(devicePixelRatio, 2) : this.level === 1 ? 1 : 0.85;
+    renderer.setPixelRatio(pr); bloom.enabled = this.level > 0; resize();
+  },
+  check(fps, now) {
+    if (fps < (this.level === 2 ? 42 : 30) && this.level > 0) { if (!this.since) this.since = now; if (now - this.since > 2500) { this.level--; this.since = 0; this.apply(); } }
+    else this.since = 0;
+    if (fps > 57 && this.level < 2) { if (!this.up) this.up = now; if (now - this.up > 6000) { this.level++; this.up = 0; this.apply(); } } else this.up = 0;
+  },
+};
+const hud = document.getElementById('hud');
+let fpsAvg = 60, hudT = 0;
+function renderHud() {
+  const q = [t('qLow'), t('qMed'), t('qHigh')][quality.level];
+  hud.innerHTML = `<div><b>${Math.round(fpsAvg)}</b> ${t('fps')} · <span class="q">${t('hudQ')}: ${q}</span></div><div><b>${M.n}</b> ${t('hudPeople')} · <b>${renderer.info.render.calls}</b> ${t('hudDraws')}</div>`;
+}
+
+// ======================= Loop =======================
+function resize() {
+  const r = stage.getBoundingClientRect(); if (!r.width) return;
+  renderer.setSize(r.width, r.height, false); composer.setSize(r.width, r.height); composer.setPixelRatio(renderer.getPixelRatio());
+  camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
+}
+new ResizeObserver(() => { resize(); drawHist(); }).observe(stage);
+let lastHook = NaN, last = performance.now(), labelT = 0, playAcc = 0, lastBirthFollow = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  U.uTime.value += dt;
+  if (S.playing) {
+    playAcc += dt; const step = M.n > 100 ? 0.09 : 0.14;
+    while (playAcc > step) { playAcc -= step; if (S.year >= 2026) { S.playing = false; playIcon(); break; } setYearTarget(S.year + 1); }
+  }
+  const prevYear = U.uYear.value;
+  U.uYear.value += (S.year - U.uYear.value) * (1 - Math.exp(-dt * (S.playing ? 5 : 3.5)));
+  if (Math.abs(S.year - U.uYear.value) < 0.002) U.uYear.value = S.year;
+  if (morph) { const k = Math.min(1, (now - morph.t0) / morph.d); medalMat.uniforms.uMorph.value = k; if (k >= 1) morph = null; }
+  if (enter) { const k = Math.min(1, Math.max(0, (now - enter.t0) / enter.d)); U.uEnter.value = ease(k); if (k >= 1) enter = null; }
+  if (fly) {
+    const k = Math.min(1, (now - fly.t0) / fly.d), e = ease(k);
+    camera.position.lerpVectors(fly.fc, fly.tc, e); controls.target.lerpVectors(fly.ft, fly.tt, e); if (k >= 1) fly = null;
+  }
+  const cur = SC[S.scene];
+  const hookKey = Math.floor(effYear() * 4); if (cur?.yearHook && hookKey !== lastHook) { lastHook = hookKey; cur.yearHook(effYear()); }
+  if (S.playing && S.follow && !reduced && now - lastBirthFollow > 900 && !fly) {
+    const y = Math.round(S.year), born = M.people.filter(p => p.born === y && !p.mi);
+    if (born.length) { lastBirthFollow = now; const p = personPos(born[0].idx, new THREE.Vector3()); fly = { t0: now, d: 1100, fc: camera.position.clone(), tc: camera.position.clone().lerp(p.clone().add(camera.position.clone().sub(controls.target).normalize().multiplyScalar(cur.follow * 1.6)), 0.5), ft: controls.target.clone(), tt: controls.target.clone().lerp(p, 0.6) }; }
+  }
+  cur?.update?.();
+  controls.update();
+  labelT += dt; if (labelT > 0.12) { labelT = 0; updateLabels(); }
+  placeLabels();
+  renderer.info.reset(); renderer.info.autoReset = false;
+  composer.render();
+  renderer.info.autoReset = true;
+  fpsAvg += (1 / Math.max(dt, 1e-3) - fpsAvg) * 0.05;
+  quality.check(fpsAvg, now);
+  hudT += dt; if (hudT > 0.5) { hudT = 0; renderHud(); }
+  requestAnimationFrame(frame);
+}
+
+// Theme changes repaint labels, portraits keep their colours
+const retheme = () => { clearLabelCache(); Object.values(SC).forEach(s => s !== SC[S.scene] && s.tint()); SC[S.scene]?.tint(); drawHist(); };
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
+new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+// ======================= Boot =======================
+buildAtlas(); buildMedals();
+U.uMinYear.value = M.minYear; yrIn.min = 1900;
+applyI18n();
+resize();
+setScene('tree', true);
+U.uEnter.value = 0; enter = reduced ? null : { t0: performance.now() + 300, d: 3200 }; if (reduced) U.uEnter.value = 1;
+drawHist(); renderStatus();
+document.fonts?.ready.then(() => clearLabelCache());
+window.__studio = { S, M: () => M, SC, select, setScene, loadData, renderer, quality, U, medalMat, medalGeo };
+requestAnimationFrame(frame);
+</script>

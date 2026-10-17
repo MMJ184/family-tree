@@ -1,0 +1,54 @@
+/* Mind Elixir inside the app theme. The container stays LTR because Mind Elixir
+   lays out its left-hand side with `direction: rtl`; Arabic text inside topics is
+   turned back to RTL below. */
+.ft-mindmap {
+  direction: ltr;
+}
+
+.ft-mindmap .map-container {
+  background: transparent;
+  font-family: var(--font-sans);
+}
+
+.ft-mindmap .map-container me-tpc {
+  font-family: var(--font-sans);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+.ft-mindmap .map-container me-root me-tpc {
+  font-family: var(--font-display);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ft-primary) 30%, transparent);
+}
+
+.ft-mindmap .map-container .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 4px;
+  margin-top: 3px;
+}
+
+.ft-mindmap .map-container .tags span {
+  margin: 0;
+  color: var(--ft-muted-foreground);
+  background: color-mix(in srgb, var(--ft-muted) 80%, transparent);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 11px;
+}
+
+.ft-mindmap .map-container me-root .tags span {
+  color: inherit;
+  background: rgb(255 255 255 / 0.18);
+}
+
+.ft-mindmap .map-container me-tpc.ft-selected {
+  outline: 2px solid var(--ft-primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.ft-mindmap[data-rtl="true"] .map-container me-tpc,
+.ft-mindmap[data-rtl="true"] .map-container .lhs me-tpc,
+.ft-mindmap[data-rtl="true"] .map-container .tags {
+  direction: rtl;
+}

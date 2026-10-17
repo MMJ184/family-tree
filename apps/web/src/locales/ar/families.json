@@ -1,0 +1,56 @@
+{
+  "title": "كل العائلات",
+  "subtitle": "جميع العائلات في {{client}}. هذه القائمة يراها المشرفون العامون فقط.",
+  "new": "عائلة جديدة",
+  "stats": {
+    "people": "الأفراد",
+    "businesses": "الأعمال",
+    "admins": "المشرفون"
+  },
+  "noAdmins": "لا يوجد مشرف بعد",
+  "moreAdmins": "+{{count}}",
+  "nativePlace": "من {{place}}",
+  "open": "فتح العائلة",
+  "menu": "إجراءات عائلة {{name}}",
+  "edit": "تعديل البيانات",
+  "editFamily": "تعديل العائلة",
+  "archive": "أرشفة",
+  "restore": "استعادة",
+  "archivedTitle": "العائلات المؤرشفة",
+  "archivedHint": "مخفية عن مشرفيها ومشاهديها، ولم يُحذف منها شيء.",
+  "archivedOn": "أُرشفت في {{date}}",
+  "empty": "لا توجد عائلات بعد. أنشئ أول عائلة لتبدأ شجرتها.",
+  "archiveConfirmTitle": "أرشفة {{name}}؟",
+  "archiveConfirmBody": "سيفقد مشرفوها ومشاهدوها الوصول إليها وتختفي من قوائمهم. يبقى الأفراد والعلاقات والأعمال محفوظة، ويمكنك استعادتها في أي وقت.",
+  "toast": {
+    "created": "تم إنشاء {{name}}",
+    "updated": "تم حفظ التغييرات",
+    "archived": "تمت أرشفة {{name}}",
+    "restored": "تمت استعادة {{name}}"
+  },
+  "form": {
+    "createTitle": "إنشاء عائلة",
+    "createBody": "اكتب اسم العائلة باللغتين، ثم يمكنك دعوة مشرفها.",
+    "editTitle": "تعديل العائلة",
+    "editBody": "تظهر التغييرات لكل من يملك الوصول إلى هذه العائلة.",
+    "name": "الاسم (بالإنجليزية)",
+    "namePlaceholder": "Al Hashimi Family",
+    "nameAr": "الاسم (بالعربية)",
+    "nameArPlaceholder": "عائلة الهاشمي",
+    "surname": "اسم العائلة",
+    "surnamePlaceholder": "الهاشمي",
+    "nativePlace": "الموطن الأصلي",
+    "nativePlacePlaceholder": "العين",
+    "description": "نبذة",
+    "descriptionPlaceholder": "من أين جاءت العائلة، وبماذا تُعرف…",
+    "color": "اللون",
+    "colorOption": "اللون {{n}}",
+    "required": "مطلوب",
+    "create": "إنشاء العائلة"
+  },
+  "noFamily": {
+    "title": "لا توجد عائلة بعد",
+    "body": "حسابك غير مرتبط بأي شجرة عائلة حتى الآن. اطلب من مشرف عائلتك أن يدعوك، ثم سجّل الدخول من جديد.",
+    "switchUser": "تبديل المستخدم التجريبي"
+  }
+}

@@ -1,0 +1,224 @@
+{
+  "actions": {
+    "addPerson": "إضافة فرد",
+    "addRelative": "إضافة قريب",
+    "openProfile": "فتح الملف",
+    "viewInTree": "عرض في الشجرة",
+    "personView": "عرض الشخص",
+    "removeFromFamily": "إزالة من العائلة"
+  },
+  "fields": {
+    "firstName": "الاسم الأول",
+    "middleName": "الاسم الأوسط",
+    "lastName": "اسم العائلة / اللقب",
+    "maidenName": "اسم العائلة قبل الزواج",
+    "nameAr": "الاسم الكامل بالعربية",
+    "nameEn": "الاسم الكامل بالإنجليزية",
+    "fatherName": "اسم الأب",
+    "grandfatherName": "اسم الجد",
+    "tribeName": "القبيلة / العائلة",
+    "kunya": "الكنية",
+    "laqab": "اللقب",
+    "gender": "الجنس",
+    "birth": "تاريخ الميلاد",
+    "death": "تاريخ الوفاة",
+    "isLiving": "على قيد الحياة",
+    "birthPlace": "مكان الميلاد",
+    "currentCity": "مدينة الإقامة",
+    "photo": "الصورة",
+    "phone": "الهاتف",
+    "email": "البريد الإلكتروني",
+    "occupation": "المهنة",
+    "education": "التعليم",
+    "notes": "ملاحظات / سيرة",
+    "marriedIntoNote": "متزوج في عائلة",
+    "photoUrl": "الصورة"
+  },
+  "form": {
+    "createTitle": "إضافة فرد",
+    "editTitle": "تعديل بيانات الفرد",
+    "subtitle": "أدخل ما تعرفه. الاسم الأول فقط مطلوب.",
+    "sections": {
+      "names": "الأسماء",
+      "nasab": "النسب والهوية",
+      "dates": "تواريخ الحياة",
+      "places": "الأماكن",
+      "contact": "التواصل",
+      "work": "العمل والتعليم",
+      "notes": "السيرة والملاحظات",
+      "custom": "حقول إضافية"
+    },
+    "precision": "دقة التاريخ",
+    "precisions": {
+      "YEAR": "السنة فقط",
+      "MONTH": "الشهر والسنة",
+      "DAY": "تاريخ كامل"
+    },
+    "year": "السنة",
+    "month": "الشهر",
+    "day": "اليوم",
+    "approx": "تقريبي",
+    "livingLocked": "تم تعيينه متوفى لوجود تاريخ وفاة.",
+    "kunyaHint": "مثال: أبو خالد",
+    "contactHint": "مخفي عن المشاهدين.",
+    "marriedIntoHint": "لعائلة غير مسجلة في هذا الحساب، مثل «تزوجت في عائلة الظاهري في دبي».",
+    "customEmpty": "لا توجد حقول إضافية بعد. أضف أي تفصيل مثل الفخذ أو المجتمع.",
+    "customKey": "الحقل",
+    "customValue": "القيمة",
+    "customAdd": "إضافة حقل",
+    "photoUpload": "رفع صورة",
+    "photoChange": "تغيير الصورة",
+    "photoRemove": "إزالة",
+    "photoHint": "تُقص الصورة إلى مربع ويُصغَّر حجمها إلى ٢٥٦ بكسل.",
+    "photoError": "تعذرت قراءة هذا الملف كصورة.",
+    "errors": {
+      "required": "مطلوب.",
+      "email": "أدخل بريدًا إلكترونيًا صحيحًا.",
+      "year": "أدخل سنة صحيحة.",
+      "month": "اختر الشهر.",
+      "day": "أدخل يومًا صحيحًا لهذا الشهر.",
+      "deathBeforeBirth": "تاريخ الوفاة يسبق تاريخ الميلاد.",
+      "endBeforeStart": "سنة الانتهاء تسبق سنة البداية.",
+      "deathRequiresNotLiving": "لا يمكن أن يكون الشخص على قيد الحياة مع وجود تاريخ وفاة."
+    }
+  },
+  "relative": {
+    "title": "إضافة قريب",
+    "subtitle": "أنشئ شخصًا جديدًا أو اربط شخصًا مسجلًا من قبل.",
+    "relativeOf": "إضافة قريب لـ",
+    "relation": "صلة القرابة",
+    "source": "الشخص",
+    "newPerson": "شخص جديد",
+    "existingPerson": "شخص موجود",
+    "searchPeople": "ابحث بالاسم أو سنة الميلاد",
+    "spouseFromFamilies": "يمكنك اختيار شخص من أي عائلة تديرها، وسيظهر في شجرتي العائلتين كشخص واحد.",
+    "parentRole": "الأب أو الأم",
+    "birthYear": "سنة الميلاد",
+    "deathYear": "سنة الوفاة",
+    "marriedIntoHint": "اختياري: عائلته إن لم تكن مسجلة في هذا الحساب.",
+    "parentChildType": "نوع صلة الأبوة",
+    "otherParent": "الوالد الآخر",
+    "noOtherParent": "غير مسجل",
+    "marryParent": "متزوج من {{name}}",
+    "siblingNeedsParents": "لإضافة أخ أو أخت، أضف أحد الوالدين أولًا.",
+    "pickSomeone": "اختر شخصًا من القائمة.",
+    "nameRequired": "أدخل الاسم بالعربية أو الإنجليزية.",
+    "add": "إضافة {{relation}}"
+  },
+  "relations": {
+    "parent": "والد",
+    "child": "ابن / ابنة",
+    "spouse": "زوج / زوجة",
+    "sibling": "أخ / أخت",
+    "father": "الأب",
+    "mother": "الأم"
+  },
+  "parentChildType": {
+    "BIOLOGICAL": "بيولوجي",
+    "ADOPTED": "بالتبني",
+    "STEP": "ربيب"
+  },
+  "marriage": {
+    "status": "حالة الزواج",
+    "statuses": {
+      "MARRIED": "متزوج",
+      "DIVORCED": "مطلق",
+      "WIDOWED": "أرمل"
+    },
+    "startYear": "سنة الزواج",
+    "endYear": "سنة الانتهاء",
+    "edit": "تعديل الزواج",
+    "editTitle": "الزواج من {{name}}"
+  },
+  "membership": {
+    "BORN": "من مواليد العائلة",
+    "MARRIED_IN": "انضم بالزواج"
+  },
+  "businessRole": {
+    "OWNER": "مالك",
+    "CO_FOUNDER": "شريك مؤسس",
+    "PARTNER": "شريك",
+    "DIRECTOR": "مدير عام",
+    "MANAGER": "مدير"
+  },
+  "family": {
+    "parents": "الوالدان",
+    "spouses": "الأزواج",
+    "siblings": "الإخوة والأخوات",
+    "children": "الأبناء",
+    "noParents": "لم يُسجل الوالدان",
+    "noSpouses": "لا يوجد زوج مسجل",
+    "noSiblings": "لا يوجد إخوة",
+    "noChildren": "لا يوجد أبناء مسجلون",
+    "siblingsDerived": "يُستنتج من الوالدين المشتركين"
+  },
+  "profile": {
+    "bin": "بن",
+    "bint": "بنت",
+    "tribe": "القبيلة: {{name}}",
+    "facts": "التفاصيل",
+    "family": "العائلة",
+    "biography": "السيرة",
+    "businesses": "الأعمال التجارية",
+    "appearsIn": "يظهر في العائلات",
+    "contactsHidden": "الهاتف والبريد الشخصي يظهران لمشرفي العائلة فقط."
+  },
+  "list": {
+    "title": "الأفراد",
+    "subtitle": "{{count}} فردًا في {{family}}",
+    "searchPlaceholder": "ابحث بالاسم أو المدينة أو سنة الميلاد…",
+    "viewMode": "طريقة العرض",
+    "views": {
+      "table": "جدول",
+      "cards": "بطاقات"
+    },
+    "filters": {
+      "all": "الكل",
+      "generation": "الجيل",
+      "status": "الحالة",
+      "gender": "الجنس",
+      "city": "المدينة",
+      "membership": "الانتماء"
+    },
+    "generationN": "الجيل {{n}}",
+    "columns": {
+      "name": "الاسم",
+      "years": "السنوات",
+      "generation": "الجيل",
+      "status": "الحالة",
+      "city": "المدينة",
+      "membership": "الانتماء",
+      "actions": "إجراءات"
+    },
+    "showing": "{{shown}} من {{total}}",
+    "showMore": "عرض المزيد (متبقٍ {{count}})",
+    "noResults": "لا يوجد أحد يطابق هذه التصفية.",
+    "clearFilters": "مسح التصفية",
+    "exportCsv": "تصدير CSV"
+  },
+  "csv": {
+    "nameAr": "الاسم (عربي)",
+    "nameEn": "الاسم (إنجليزي)",
+    "fileName": "{{family}}-الأفراد-{{date}}",
+    "familyFallback": "عائلة"
+  },
+  "confirm": {
+    "deleteTitle": "حذف {{name}}؟",
+    "deleteBody": "سيُزال من شجرة العائلة. تُحفظ صلاته في حال استعادة السجل.",
+    "unlinkTitle": "إزالة صلة الأبوة هذه؟",
+    "unlinkBody": "لن يكون {{a}} و{{b}} مرتبطين كوالد وابن بعد الآن. لن يُحذف أي منهما.",
+    "unmarryTitle": "إزالة هذا الزواج؟",
+    "unmarryBody": "ستُزال صلة الزواج بين {{a}} و{{b}}. لن يُحذف أي منهما.",
+    "removeTitle": "إزالة {{name}} من هذه العائلة؟",
+    "removeBody": "انضم إلى هذه العائلة بالزواج. ستتم إزالته من شجرة هذه العائلة مع الصلات الموجودة هنا فقط، ولن يُحذف سجله."
+  },
+  "toast": {
+    "created": "تمت إضافة {{name}}",
+    "updated": "تم حفظ {{name}}",
+    "deleted": "تم حذف {{name}}",
+    "relativeAdded": "تمت إضافة {{name}} بصفة {{relation}}",
+    "marriageUpdated": "تم تحديث الزواج",
+    "unlinked": "تمت إزالة الصلة",
+    "removed": "تمت إزالة {{name}} من هذه العائلة"
+  }
+}
