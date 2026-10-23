@@ -33,7 +33,7 @@ describe('family isolation', () => {
 
   it('gives Super Admin every family on the account', async () => {
     await login('u-super');
-    expect((await listFamilies()).length).toBe(4);
+    expect((await listFamilies()).length).toBe(5);
   });
 
   it('shows a married-in person in both trees as one record', async () => {

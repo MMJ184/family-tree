@@ -61,7 +61,7 @@ export class LabelLayer {
       const el = document.createElement('div');
       // Positions are projected screen pixels, so the pill is placed with a physical transform from the top-left.
       el.style.cssText = [
-        'position:absolute;left:0;top:0;display:grid;justify-items:center;padding:2px 9px 3px;border-radius:9px',
+        'position:absolute;left:0;top:0;transform-origin:0 0;display:grid;justify-items:center;padding:2px 9px 3px;border-radius:9px',
         'white-space:nowrap;background:var(--ft-glass);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)',
         `border:${BORDER}`,
         'transition:opacity .25s ease;will-change:transform;box-shadow:0 2px 10px rgb(0 0 0 / 0.12)',
@@ -149,7 +149,9 @@ export class LabelLayer {
       const L = this.pills[used];
       const p = this.host.people()[i];
       if (!L || !p) break;
-      const size = this.labelSize(p);
+      const base = this.labelSize(p);
+      const ls = cur.labelScale ?? 1;
+      const size = { w: base.w * ls, h: base.h * ls };
       const sc = this.screenOf(i, cur, size);
       if (!sc) continue;
       const pri = sel === p.id || hov === p.id;
@@ -197,7 +199,8 @@ export class LabelLayer {
         L.el.hidden = true;
         continue;
       }
-      L.el.style.transform = `translate(${sc.x.toFixed(1)}px, ${sc.y.toFixed(1)}px)`;
+      const ls = cur.labelScale ?? 1;
+      L.el.style.transform = `translate(${sc.x.toFixed(1)}px, ${sc.y.toFixed(1)}px)${ls === 1 ? '' : ` scale(${ls})`}`;
     }
   }
 

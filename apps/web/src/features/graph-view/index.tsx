@@ -1,6 +1,6 @@
 import { branchOf } from '@family-tree/shared';
 import { cn } from '@family-tree/ui';
-import { Maximize } from 'lucide-react';
+import { Maximize, Move } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ export function FamilyGraphView({ graph, selectedId, onSelect, year }: TreeViewP
   const lang = i18n.language;
   const theme = usePrefs((s) => s.theme);
   const [mode, setMode] = useState<Mode>('2d');
+  const [pan, setPan] = useState(false);
   const [handle, setHandle] = useState<GraphHandle | null>(null);
   const [systemDark, setSystemDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -179,6 +180,11 @@ export function FamilyGraphView({ graph, selectedId, onSelect, year }: TreeViewP
     };
   }, [handle, ctl]);
 
+  // 3D drag mode: turn (default) or move.
+  useEffect(() => {
+    handle?.setPan?.(pan);
+  }, [handle, pan]);
+
   // Selection: highlight and fly to the person.
   useEffect(() => {
     ctl.selectedId = selectedId;
@@ -221,6 +227,23 @@ export function FamilyGraphView({ graph, selectedId, onSelect, year }: TreeViewP
         >
           <Maximize className="size-3.5" aria-hidden />
         </button>
+        {mode === '3d' && (
+          <button
+            type="button"
+            aria-pressed={pan}
+            onClick={() => setPan((v) => !v)}
+            title={t('pan')}
+            aria-label={t('pan')}
+            className={cn(
+              'grid size-7 place-items-center rounded-full transition-colors',
+              pan
+                ? 'bg-primary text-primary-foreground shadow'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+            )}
+          >
+            <Move className="size-3.5" aria-hidden />
+          </button>
+        )}
       </div>
 
       <ul className="glass pointer-events-none absolute start-3 bottom-24 z-10 hidden gap-3 rounded-full px-3 py-1.5 text-xs text-muted-foreground shadow-lg sm:flex">

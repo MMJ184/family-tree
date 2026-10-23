@@ -1,6 +1,8 @@
 import ForceGraph3D, { type ForceGraph3DInstance } from '3d-force-graph';
 // The app dedupes `three`, so this is the same copy 3d-force-graph renders with.
 import { CanvasTexture, type PerspectiveCamera, Sprite, SpriteMaterial, SRGBColorSpace } from 'three';
+import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { setDragMode } from '#/lib/orbit.ts';
 import { applyForces, isHiLink } from './forces.ts';
 import type { GLink, GNode } from './model.ts';
 import { hasBizAt, isDeadAt } from './model.ts';
@@ -190,6 +192,9 @@ export function createGraph3D(el: HTMLElement, ctl: ViewCtl): GraphHandle {
     },
     fit(ms = 700) {
       f.zoomToFit(ms, 60);
+    },
+    setPan(on) {
+      setDragMode(f.controls() as OrbitControls, on);
     },
     resize(w, h) {
       f.width(w).height(h);

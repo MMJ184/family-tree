@@ -1,4 +1,4 @@
-import type { Id, Marriage, ParentChild } from './schemas.ts';
+import type { FamilyGraph, Id, Marriage, ParentChild } from './schemas.ts';
 
 // Relationship helpers over the stored edges. Siblings are derived from shared
 // parents and never stored (spec §3.3).
@@ -73,6 +73,39 @@ export function branchOf(edges: Edges, personId: Id): Set<Id> {
     for (const s of spousesOf(edges, id)) out.add(s);
   }
   return out;
+}
+
+/**
+ * How far the tree views reach when narrowed to one person: `down` is the
+ * person, their spouses and every descendant with the descendants' spouses;
+ * `line` adds all of the person's ancestors.
+ */
+export type BranchScope = 'down' | 'line';
+
+export function scopeIds(edges: Edges, personId: Id, scope: BranchScope): Set<Id> {
+  const out = new Set<Id>();
+  for (const id of [personId, ...descendantsOf(edges, personId)]) {
+    out.add(id);
+    for (const s of spousesOf(edges, id)) out.add(s);
+  }
+  if (scope === 'line') for (const a of ancestorsOf(edges, personId)) out.add(a);
+  return out;
+}
+
+/** The family graph cut down to one person's branch (see `BranchScope`). */
+export function narrowGraph(graph: FamilyGraph, personId: Id, scope: BranchScope): FamilyGraph {
+  const ids = scopeIds(graph, personId, scope);
+  const personBusiness = graph.personBusiness.filter((pb) => ids.has(pb.personId));
+  const bizIds = new Set(personBusiness.map((pb) => pb.businessId));
+  return {
+    ...graph,
+    people: graph.people.filter((p) => ids.has(p.id)),
+    memberships: graph.memberships.filter((m) => ids.has(m.personId)),
+    parentChild: graph.parentChild.filter((e) => ids.has(e.parentId) && ids.has(e.childId)),
+    marriages: graph.marriages.filter((m) => ids.has(m.personAId) && ids.has(m.personBId)),
+    businesses: graph.businesses.filter((b) => bizIds.has(b.id)),
+    personBusiness,
+  };
 }
 
 export type ParentLinkError = 'SELF' | 'CYCLE' | 'DUPLICATE' | 'TOO_MANY_BIOLOGICAL_PARENTS';

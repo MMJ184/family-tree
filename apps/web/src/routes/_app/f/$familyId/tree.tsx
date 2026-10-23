@@ -1,8 +1,9 @@
-import { partialYear } from '@family-tree/shared';
+import type { FamilyGraph } from '@family-tree/shared';
+import { type BranchScope, narrowGraph, partialYear } from '@family-tree/shared';
 import { cn } from '@family-tree/ui';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Box, GitFork, Layers, Network, User, Waypoints } from 'lucide-react';
+import { Box, GitFork, Layers, Network, User, Waypoints, X } from 'lucide-react';
 import { lazy, Suspense, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -12,6 +13,7 @@ import { PersonSearch } from '#/components/shared/PersonSearch.tsx';
 import { YearSlider } from '#/components/shared/YearSlider.tsx';
 import { useFamilyGraph } from '#/entities/family/queries.ts';
 import { PersonQuickPanel } from '#/features/people/PersonQuickPanel.tsx';
+import { personShortName } from '#/lib/display.ts';
 import { usePrefs } from '#/lib/prefs.ts';
 
 // Heavy views (React Flow, force-graph, Mind Elixir, three.js) load on demand.
@@ -52,6 +54,9 @@ export const Route = createFileRoute('/_app/f/$familyId/tree')({
     view: z.enum(VIEWS).catch('tree'),
     person: z.string().optional(),
     year: z.number().int().optional().catch(undefined),
+    /** Narrows every view to this person's branch (see `BranchScope`). */
+    root: z.string().optional(),
+    scope: z.enum(['down', 'line']).optional().catch(undefined),
   }),
   component: TreePage,
   errorComponent: ({ error, reset }) => <ErrorState error={error} reset={reset} />,
@@ -60,15 +65,21 @@ export const Route = createFileRoute('/_app/f/$familyId/tree')({
 function TreePage() {
   const { t } = useTranslation('tree');
   const { familyId } = Route.useParams();
-  const { view, person, year } = Route.useSearch();
+  const { view, person, year, root, scope } = Route.useSearch();
+  const locale = usePrefs((s) => s.locale);
   const navigate = useNavigate({ from: Route.fullPath });
   const { data: graph, isPending, error } = useFamilyGraph(familyId);
   // The panel slides in from the end side: right in English, left in Arabic.
-  const slide = usePrefs((s) => s.locale) === 'ar' ? -24 : 24;
+  const slide = locale === 'ar' ? -24 : 24;
 
   const setSearch = useCallback(
-    (patch: { view?: View; person?: string | undefined; year?: number | undefined }) =>
-      void navigate({ search: (s) => ({ ...s, ...patch }), replace: true }),
+    (patch: {
+      view?: View;
+      person?: string | undefined;
+      year?: number | undefined;
+      root?: string | undefined;
+      scope?: BranchScope | undefined;
+    }) => void navigate({ search: (s) => ({ ...s, ...patch }), replace: true }),
     [navigate],
   );
   const onSelect = useCallback((id: string | null) => setSearch({ person: id ?? undefined }), [setSearch]);
@@ -79,16 +90,30 @@ function TreePage() {
     return { min: years.length ? Math.min(...years) : 1900, max: new Date().getFullYear() };
   }, [graph]);
 
+  const narrowed = useMemo(
+    () => (graph && root && scope && graph.people.some((p) => p.id === root) ? narrowGraph(graph, root, scope) : graph),
+    [graph, root, scope],
+  );
+
   if (isPending) return <LoadingState />;
   if (error) return <ErrorState error={error} />;
 
   const ViewComponent = COMPONENTS[view];
-  const selected = person && graph.people.some((p) => p.id === person) ? person : null;
+  const shown = narrowed ?? graph;
+  const selected = person && shown.people.some((p) => p.id === person) ? person : null;
+  const narrowedTo = shown === graph ? null : (root ?? null);
 
   return (
     <div className="relative h-[calc(100vh-var(--topbar-height))] overflow-hidden">
       <Suspense fallback={<LoadingState className="h-full" />}>
-        <ViewComponent key={view} graph={graph} selectedId={selected} onSelect={onSelect} year={year ?? null} />
+        {/* A new scope remounts the view so it lays out and fits the smaller set afresh. */}
+        <ViewComponent
+          key={`${view}:${narrowedTo ?? ''}:${scope ?? ''}`}
+          graph={shown}
+          selectedId={selected}
+          onSelect={onSelect}
+          year={year ?? null}
+        />
       </Suspense>
 
       {/* Floating toolbar: view switcher and person search. */}
@@ -120,9 +145,18 @@ function TreePage() {
             );
           })}
         </div>
+        {narrowedTo && scope && (
+          <ScopeChip
+            graph={graph}
+            root={narrowedTo}
+            scope={scope}
+            locale={locale}
+            onClear={() => setSearch({ root: undefined, scope: undefined })}
+          />
+        )}
         <div className="pointer-events-auto ms-auto w-full max-w-64 sm:w-64">
           <PersonSearch
-            people={graph.people}
+            people={shown.people}
             onPick={(id) => onSelect(id)}
             placeholder={t('searchPlaceholder')}
             className="glass rounded-full shadow-lg"
@@ -150,14 +184,52 @@ function TreePage() {
             className="absolute end-3 top-16 bottom-20 z-20 w-[min(22rem,calc(100%-1.5rem))]"
           >
             <PersonQuickPanel
-              graph={graph}
+              graph={shown}
               personId={selected}
               onClose={() => onSelect(null)}
               onSelect={(id) => onSelect(id)}
+              scope={narrowedTo === selected ? (scope ?? 'all') : narrowedTo ? null : 'all'}
+              onScope={(next) =>
+                setSearch(next ? { root: selected, scope: next } : { root: undefined, scope: undefined })
+              }
             />
           </motion.aside>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/** Shows whose branch the views are narrowed to, with a button back to everyone. */
+function ScopeChip({
+  graph,
+  root,
+  scope,
+  locale,
+  onClear,
+}: {
+  graph: FamilyGraph;
+  root: string;
+  scope: BranchScope;
+  locale: string;
+  onClear: () => void;
+}) {
+  const { t } = useTranslation('tree');
+  const p = graph.people.find((x) => x.id === root);
+  if (!p) return null;
+  const name = personShortName(p, locale);
+  return (
+    <div className="glass pointer-events-auto flex h-10 shrink-0 items-center gap-1 rounded-full ps-3 pe-1 text-xs font-semibold shadow-lg">
+      <span className="truncate">{t('scope.chip', { name, scope: t(`scope.options.${scope}`) })}</span>
+      <button
+        type="button"
+        onClick={onClear}
+        title={t('scope.clear')}
+        aria-label={t('scope.clear')}
+        className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <X className="size-3.5" aria-hidden />
+      </button>
     </div>
   );
 }

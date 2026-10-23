@@ -44,6 +44,20 @@ const FAMILY_NAMES: Record<string, { en: string; ar: string }> = {
   ketbi: { en: 'Al Ketbi', ar: 'الكتبي' },
   marri: { en: 'Al Marri', ar: 'المري' },
   nuaimi: { en: 'Al Nuaimi', ar: 'النعيمي' },
+  mangukiya: { en: 'Mangukiya', ar: 'مانغوكيا' },
+  patel: { en: 'Patel', ar: 'باتيل' },
+  savani: { en: 'Savani', ar: 'ساواني' },
+  dhameliya: { en: 'Dhameliya', ar: 'داميليا' },
+  kalathiya: { en: 'Kalathiya', ar: 'كالاثيا' },
+  vaghani: { en: 'Vaghani', ar: 'فاغاني' },
+  kakadiya: { en: 'Kakadiya', ar: 'كاكاديا' },
+  dholakiya: { en: 'Dholakiya', ar: 'دولاكيا' },
+  goyani: { en: 'Goyani', ar: 'غوياني' },
+  vekariya: { en: 'Vekariya', ar: 'فيكاريا' },
+  gondaliya: { en: 'Gondaliya', ar: 'غونداليا' },
+  ramani: { en: 'Ramani', ar: 'راماني' },
+  bhalala: { en: 'Bhalala', ar: 'بهالالا' },
+  mandani: { en: 'Mandani', ar: 'مانداني' },
 };
 
 const CITIES = [
@@ -421,6 +435,153 @@ const SHAMSI: FamilySeed = {
   ],
 };
 
+// A Gujarati family from Surat: Haribhai and his two sons' households. Contact
+// details use Indian formats instead of the UAE defaults in toPerson().
+const G = (
+  id: string,
+  en: string,
+  ar: string,
+  sex: 'M' | 'F',
+  born: number,
+  died: number | null,
+  family: string,
+  extra?: Partial<Person>,
+): PersonSeed => {
+  const adult = died == null && born < 2005;
+  return P(id, en, ar, sex, born, died, family, {
+    birthPlace: 'Surat',
+    currentCity: died == null ? 'Surat' : null,
+    phone: adult
+      ? `+91 98${String(born % 100).padStart(2, '0')}${String((born * 37 + en.length) % 1000000).padStart(6, '0')}`
+      : null,
+    email: adult ? `${en.toLowerCase()}.${id}@example.in` : null,
+    ...extra,
+  });
+};
+const MANGUKIYA: FamilySeed = {
+  family: familyRecord('fam-mangukiya', 'Mangukiya Family', 'عائلة مانغوكيا', '#c2410c', {
+    surname: 'Mangukiya',
+    nativePlace: 'Surat, Gujarat',
+    description: 'A Gujarati family: five generations from Haribhai Mangukiya of Surat, Gujarat, India.',
+  }),
+  people: [
+    G('mg-hari', 'Haribhai', 'هاري باي', 'M', 1920, 1998, 'mangukiya', { occupation: 'Farmer' }),
+    G('mg-manji', 'Manjibhai', 'مانجي باي', 'M', 1942, null, 'mangukiya'),
+    G('mg-ketan', 'Ketanbhai', 'كيتان باي', 'M', 1946, null, 'mangukiya'),
+    G('mg-limba', 'Limbabhai', 'ليمبا باي', 'M', 1963, null, 'mangukiya'),
+    G('mg-jeram', 'Jerambhai', 'جيرام باي', 'M', 1966, null, 'mangukiya'),
+    G('mg-jitu', 'Jitubhai', 'جيتو باي', 'M', 1969, null, 'mangukiya'),
+    G('mg-bhavu', 'Bhavuben', 'بافو بين', 'F', 1972, null, 'mangukiya'),
+    G('mg-nilesh', 'Nilesh', 'نيليش', 'M', 1987, null, 'mangukiya'),
+    G('mg-bharat', 'Bharat', 'بهارات', 'M', 1990, null, 'mangukiya'),
+    G('mg-jemish', 'Jemish', 'جيميش', 'M', 1993, null, 'mangukiya'),
+    G('mg-maulik', 'Maulik', 'موليك', 'M', 2001, null, 'mangukiya'),
+    G('mg-simran', 'Simran', 'سيمران', 'F', 2004, null, 'mangukiya'),
+    G('mg-jay', 'Jay', 'جاي', 'M', 2006, null, 'mangukiya'),
+    G('mg-khushi', 'Khushi', 'خوشي', 'F', 2009, null, 'mangukiya'),
+    // Bhavuben's children carry their father's surname.
+    G('mg-pradip', 'Pradip', 'براديب', 'M', 1997, null, 'gondaliya'),
+    G('mg-priyanka', 'Priyanka', 'بريانكا', 'F', 2000, null, 'gondaliya'),
+    G('mg-om', 'Om', 'أوم', 'M', 2017, null, 'mangukiya'),
+    G('mg-mira', 'Mira', 'ميرا', 'F', 2020, null, 'mangukiya'),
+    G('mg-kavaya', 'Kavaya', 'كافايا', 'M', 2018, null, 'mangukiya'),
+    G('mg-jeel', 'Jeel', 'جيل', 'M', 2021, null, 'mangukiya'),
+    // Simran's son carries his father's surname.
+    G('mg-drishiv', 'Drishiv', 'دريشيف', 'M', 2025, null, 'savani'),
+    G('mg-lashkar', 'Lashkarbhai', 'لاشكار باي', 'M', 1971, null, 'mangukiya'),
+    G('mg-manju', 'Manjuben', 'مانجو بين', 'F', 1973, null, 'mangukiya'),
+    G('mg-ketan2', 'Ketanbhai', 'كيتان باي', 'M', 1974, null, 'mangukiya'),
+    G('mg-dinesh', 'Dineshbhai', 'دينيش باي', 'M', 1977, null, 'mangukiya'),
+    G('mg-kantu', 'Kantuben', 'كانتو بين', 'F', 1979, null, 'mangukiya'),
+    G('mg-jayesh', 'Jayesh', 'جاييش', 'M', 1995, null, 'mangukiya'),
+    G('mg-sejal', 'Sejal', 'سيجال', 'F', 1997, null, 'mangukiya'),
+    G('mg-rakesh', 'Rakesh', 'راكيش', 'M', 1999, null, 'mangukiya'),
+    G('mg-kinjal', 'Kinjal', 'كينجال', 'F', 2002, null, 'mangukiya'),
+    G('mg-harshil', 'Harshil', 'هارشيل', 'M', 2000, null, 'mangukiya'),
+    G('mg-kano', 'Kano', 'كانو', 'M', 2003, null, 'mangukiya'),
+    G('mg-guddi', 'Guddi', 'غودي', 'F', 2002, null, 'mangukiya'),
+    G('mg-armi', 'Armi', 'أرمي', 'F', 2004, null, 'mangukiya'),
+    G('mg-choti', 'Choti', 'تشوتي', 'F', 2007, null, 'mangukiya'),
+    G('mg-man', 'Man', 'مان', 'M', 2010, null, 'mangukiya'),
+    G('mg-panth', 'Panth', 'بانث', 'M', 2019, null, 'mangukiya'),
+    G('mg-dhvani', 'Dhvani', 'دفاني', 'F', 2022, null, 'mangukiya'),
+    G('mg-dhruv', 'Dhruv', 'دروف', 'M', 2022, null, 'mangukiya'),
+    G('mg-yash', 'Yash', 'ياش', 'M', 2024, null, 'mangukiya'),
+    // Kinjal's and Sejal's children carry their fathers' surnames.
+    G('mg-het', 'Het', 'هيت', 'M', 2023, null, 'kalathiya'),
+    G('mg-vaishnavi', 'Vaishnavi', 'فايشنافي', 'F', 2025, null, 'kalathiya'),
+    G('mg-krish', 'Krish', 'كريش', 'M', 2020, null, 'vaghani'),
+    G('mg-riya', 'Riya', 'ريا', 'F', 2023, null, 'vaghani'),
+    // Married in
+    G('mg-uji', 'Ujiben', 'أوجي بين', 'F', 1924, 2010, 'savani'),
+    G('mg-kashi', 'Kashiben', 'كاشي بين', 'F', 1945, null, 'dhameliya'),
+    G('mg-kokila', 'Kokilaben', 'كوكيلا بين', 'F', 1950, null, 'kakadiya'),
+    G('mg-hansa', 'Hansaben', 'هانسا بين', 'F', 1974, null, 'patel'),
+    G('mg-alpa', 'Alpaben', 'ألبا بين', 'F', 1977, null, 'bhalala'),
+    G('mg-asha', 'Ashaben', 'آشا بين', 'F', 1980, null, 'kakadiya'),
+    G('mg-krupa', 'Krupa', 'كروبا', 'F', 1997, null, 'vekariya'),
+    G('mg-nidhi', 'Nidhi', 'نيدهي', 'F', 2000, null, 'ramani'),
+    G('mg-hiren', 'Hiren', 'هيرين', 'M', 1999, null, 'kalathiya'),
+    G('mg-nikunj', 'Nikunj', 'نيكونج', 'M', 1995, null, 'vaghani'),
+    G('mg-vasan', 'Vasanben', 'فاسان بين', 'F', 1966, null, 'dholakiya'),
+    G('mg-vanita', 'Vanitaben', 'فانيتا بين', 'F', 1972, null, 'goyani'),
+    G('mg-kailash', 'Kailash', 'كايلاش', 'F', 1975, null, 'vekariya'),
+    G('mg-ramesh', 'Rameshbhai', 'راميش باي', 'M', 1970, null, 'gondaliya'),
+    G('mg-payal', 'Payal', 'بايال', 'F', 1992, null, 'ramani'),
+    G('mg-dhruvi', 'Dhruvi', 'دروفي', 'F', 1995, null, 'bhalala'),
+    G('mg-ankit', 'Ankit', 'أنكيت', 'M', 2000, null, 'savani'),
+    G('mg-ekta', 'Ekta', 'إكتا', 'F', 2002, null, 'mandani'),
+  ],
+  marriedIn: [
+    'mg-uji',
+    'mg-kashi',
+    'mg-kokila',
+    'mg-hansa',
+    'mg-alpa',
+    'mg-asha',
+    'mg-krupa',
+    'mg-nidhi',
+    'mg-hiren',
+    'mg-nikunj',
+    'mg-vasan',
+    'mg-vanita',
+    'mg-kailash',
+    'mg-ramesh',
+    'mg-payal',
+    'mg-dhruvi',
+    'mg-ankit',
+    'mg-ekta',
+  ],
+  unions: [
+    { a: 'mg-hari', b: 'mg-uji', year: 1940, kids: ['mg-manji', 'mg-ketan'] },
+    { a: 'mg-manji', b: 'mg-kashi', year: 1962, kids: ['mg-limba', 'mg-jeram', 'mg-jitu', 'mg-bhavu'] },
+    { a: 'mg-limba', b: 'mg-vasan', year: 1985, kids: ['mg-nilesh', 'mg-bharat', 'mg-jemish'] },
+    { a: 'mg-jeram', b: 'mg-vanita', year: 2000, kids: ['mg-maulik', 'mg-simran'] },
+    { a: 'mg-jitu', b: 'mg-kailash', year: 2004, kids: ['mg-jay', 'mg-khushi'] },
+    { a: 'mg-bhavu', b: 'mg-ramesh', year: 1995, kids: ['mg-pradip', 'mg-priyanka'] },
+    { a: 'mg-bharat', b: 'mg-payal', year: 2015, kids: ['mg-om', 'mg-mira'] },
+    { a: 'mg-jemish', b: 'mg-dhruvi', year: 2016, kids: ['mg-kavaya', 'mg-jeel'] },
+    { a: 'mg-simran', b: 'mg-ankit', year: 2023, kids: ['mg-drishiv'] },
+    // Wedding year not known.
+    { a: 'mg-maulik', b: 'mg-ekta', year: 0, kids: [] },
+    {
+      a: 'mg-ketan',
+      b: 'mg-kokila',
+      year: 1970,
+      // A third daughter's name is still to come.
+      kids: ['mg-lashkar', 'mg-manju', 'mg-ketan2', 'mg-dinesh', 'mg-kantu'],
+    },
+    { a: 'mg-lashkar', b: 'mg-hansa', year: 1994, kids: ['mg-jayesh', 'mg-sejal', 'mg-rakesh', 'mg-kinjal'] },
+    { a: 'mg-ketan2', b: 'mg-alpa', year: 1998, kids: ['mg-harshil', 'mg-kano'] },
+    { a: 'mg-jayesh', b: 'mg-krupa', year: 2018, kids: ['mg-panth', 'mg-dhvani'] },
+    { a: 'mg-rakesh', b: 'mg-nidhi', year: 2021, kids: ['mg-dhruv', 'mg-yash'] },
+    { a: 'mg-kinjal', b: 'mg-hiren', year: 2022, kids: ['mg-het', 'mg-vaishnavi'] },
+    { a: 'mg-sejal', b: 'mg-nikunj', year: 2019, kids: ['mg-krish', 'mg-riya'] },
+    { a: 'mg-dinesh', b: 'mg-asha', year: 2001, kids: ['mg-guddi', 'mg-armi', 'mg-choti', 'mg-man'] },
+  ],
+  businesses: [],
+};
+
 const MALE: ReadonlyArray<readonly [string, string]> = [
   ['Khalid', 'خالد'],
   ['Ahmed', 'أحمد'],
@@ -605,7 +766,7 @@ const DEMO_MEMBERS: FamilyMember[] = [
 
 export function buildSeed(): Omit<DemoDb, 'version' | 'sessionUserId'> {
   const client: Client = { id: DEMO_CLIENT_ID, name: 'Al Mansouri Family Office' };
-  const seeds = [MANSOURI, KAABI, SHAMSI, syntheticFamily(500)];
+  const seeds = [MANSOURI, KAABI, SHAMSI, MANGUKIYA, syntheticFamily(500)];
   const people = new Map<string, Person>();
   const familyPeople: FamilyPerson[] = [];
   const parentChild: ParentChild[] = [];

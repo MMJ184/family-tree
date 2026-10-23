@@ -1,5 +1,12 @@
-import { childrenOf, type FamilyGraph, type Person, parentsOf, siblingsOf } from '@family-tree/shared';
-import { Button } from '@family-tree/ui';
+import {
+  type BranchScope,
+  childrenOf,
+  type FamilyGraph,
+  type Person,
+  parentsOf,
+  siblingsOf,
+} from '@family-tree/shared';
+import { Button, cn } from '@family-tree/ui';
 import { Link } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import { Briefcase, Building2, GraduationCap, MapPin, Pencil, UserPlus, UserRound, X } from 'lucide-react';
@@ -17,10 +24,13 @@ interface PersonQuickPanelProps {
   personId: string;
   onClose: () => void;
   onSelect: (id: string) => void;
+  /** The tree's narrowing to this person's branch ('all' = everyone), or null while it is narrowed to someone else. */
+  scope?: BranchScope | 'all' | null;
+  onScope?: (scope: BranchScope | null) => void;
 }
 
 /** Glass side panel on the tree page: who this is, their immediate family and businesses. */
-export function PersonQuickPanel({ graph, personId, onClose, onSelect }: PersonQuickPanelProps) {
+export function PersonQuickPanel({ graph, personId, onClose, onSelect, scope, onScope }: PersonQuickPanelProps) {
   const { t, i18n } = useTranslation('people');
   const tc = useTranslation().t;
   const locale = i18n.language;
@@ -173,6 +183,8 @@ export function PersonQuickPanel({ graph, personId, onClose, onSelect }: PersonQ
         )}
       </div>
 
+      {onScope && <ScopePicker scope={scope ?? 'all'} onScope={onScope} />}
+
       <div className="flex shrink-0 flex-wrap gap-2 border-t border-border px-5 py-3">
         <Button asChild size="sm" className="flex-1">
           <Link to="/f/$familyId/people/$personId" params={{ familyId, personId }}>
@@ -231,5 +243,46 @@ function Group({ title, people, onSelect }: { title: string; people: Person[]; o
         ))}
       </div>
     </div>
+  );
+}
+
+const SCOPES = ['all', 'line', 'down'] as const;
+
+/** Show the whole family, or only this person's line (ancestors + descendants) or descendants. */
+function ScopePicker({
+  scope,
+  onScope,
+}: {
+  scope: BranchScope | 'all' | null;
+  onScope: (scope: BranchScope | null) => void;
+}) {
+  const { t } = useTranslation('tree');
+  return (
+    <fieldset className="shrink-0 border-t border-border px-5 py-3">
+      <legend className="sr-only">{t('scope.label')}</legend>
+      <p aria-hidden className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+        {t('scope.label')}
+      </p>
+      <div className="flex gap-0.5 rounded-full bg-muted p-1">
+        {SCOPES.map((s) => {
+          const on = scope === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={on}
+              title={t(`scope.hints.${s}`)}
+              onClick={() => onScope(s === 'all' ? null : s)}
+              className={cn(
+                'flex-1 rounded-full px-2 py-1 text-xs font-semibold transition-colors',
+                on ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t(`scope.options.${s}`)}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }

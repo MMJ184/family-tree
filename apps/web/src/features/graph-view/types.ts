@@ -19,6 +19,8 @@ export interface GraphHandle {
   /** Zooms so the person's branch (ids from `branchOf`) fits the free screen area. */
   focus(id: string, branch: ReadonlySet<string>): void;
   fit(ms?: number): void;
+  /** 3D only: drag moves the view instead of turning it. */
+  setPan?(on: boolean): void;
   resize(w: number, h: number): void;
   destroy(): void;
 }

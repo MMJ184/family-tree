@@ -1,10 +1,10 @@
-# Family Tree Manager — Product Spec v0.6
+# Family Tree Manager — Product Spec v0.7
 
 | | |
 |---|---|
 | Status | Draft |
 | Owner | MMJ |
-| Date | 2026-10-17 |
+| Date | 2026-10-23 |
 | Platform | Web app (desktop + mobile browser) |
 | Frontend | React (high-end UI, 3D / 4D tree views) |
 | Backend | Node.js + Hono (same stack as the Syvona project) |
@@ -102,7 +102,9 @@ Rules:
 
 Design direction: premium, modern UI — glassmorphism/soft shadows, smooth transitions, dark & light theme, consistent design system.
 
-Common controls: zoom, pan, collapse/expand branch, click a card to open details, "focus on me".
+Common controls: zoom, pan (3D views have a Move mode so one-finger / left-button drag pans instead of rotating), collapse/expand branch, click a card to open details, "focus on me". Clicking a person zooms to fit their branch.
+
+Branch filter: from a person's details panel, every view can be narrowed to **Everyone** (default), **Full line** (the person, all their ancestors, and all their descendants with the descendants' spouses) or **Descendants** (the person, their spouses, and all descendants with their spouses). A chip in the toolbar shows the active filter and clears it. The filter is kept in the page URL so it can be shared.
 
 ### 3.4.1 Language & RTL (v1)
 - UI fully available in **English and Arabic**; Arabic is the default for this client.
@@ -230,6 +232,7 @@ DNA integration, public search across families, payments, native mobile apps, GE
 | 8 | Auth sessions (2026-10-07) | Server-side sessions stored in PostgreSQL, as in Syvona — replaces JWT |
 | 9 | Client demo first (2026-10-17) | Build the web app first, with no backend, to demo to the client. `apps/web` calls a mock API that runs in the browser (in-memory data seeded with sample families, saved in browser storage, with a "reset demo" action) and applies the same role and visibility rules as the real API will. A demo login lets the presenter switch between Super Admin, Family Admin and Viewer. The real Hono API later replaces the mock layer behind the same service functions. The demo is built as static files and served from our own server (Docker + nginx). |
 | 10 | Tree direction in Arabic (2026-10-17) | Mirror to right-to-left in Arabic. In horizontal trees and timelines the founder or earliest year sits on the right and generations or years run leftwards. In top-down trees, siblings and spouses are ordered right to left, so the eldest is on the right. English keeps left-to-right. |
+| 11 | Narrowing the views to one branch (2026-10-23) | Any tree view can be filtered to a person's full line (ancestors + descendants) or to their descendants only, chosen from the person's details panel. Spouses of the person and their descendants are included; siblings, cousins and ancestors' other spouses are not. |
 
 **Still open**
 1. Hijri date display — needed at launch or later?

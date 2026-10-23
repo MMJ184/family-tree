@@ -4,6 +4,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { setDragMode } from '#/lib/orbit.ts';
 import { disposeTree, type Shared } from './gl.ts';
 import { LabelLayer } from './labels.ts';
 import type { StudioModel, StudioPerson } from './model.ts';
@@ -13,11 +14,17 @@ import { BUILD, type SceneDef, type SceneKey } from './scenes/index.ts';
 import type { SceneCtx } from './scenes/types.ts';
 
 // The 3D studio engine: plain three.js, mounted into a container by the React view.
-// Owns the renderer, camera, post-processing, the shared portrait billboards, the seven
+// Owns the renderer, camera, post-processing, the shared portrait billboards, the
 // scenes (built lazily, morphing between them), labels, picking, the time loop and the
 // adaptive quality. dispose() frees every GPU resource and listener it created.
 
 export type Quality = 0 | 1 | 2;
+
+/** The scene rail (index.tsx: `md:w-56` plus its inset) stands over the stage's start side from the md breakpoint up. */
+const RAIL_MEDIA = '(min-width: 48rem)';
+const RAIL_WIDTH = 236;
+/** The tree route's person panel (22rem plus its inset) covers the end side while someone is selected. */
+const PANEL_WIDTH = 364;
 
 export interface StudioState {
   scene: SceneKey;
@@ -25,6 +32,8 @@ export interface StudioState {
   playing: boolean;
   follow: boolean;
   spin: boolean;
+  /** One-finger / left-button drag moves the scene instead of turning it. */
+  pan: boolean;
   quality: Quality;
   fps: number;
   calls: number;
@@ -123,6 +132,10 @@ export class Studio {
   };
   private hiArr: ArrayLike<number> = new Float32Array(0);
   private morph: { t0: number; d: number } | null = null;
+  /** Current horizontal projection shift in px (see shiftTarget). */
+  private viewShift = 0;
+  /** Portrait positions to morph from when the open scene is rebuilt in place (language change). */
+  private relayoutFrom: Float32Array | null = null;
   private fly: { t0: number; d: number; fc: Vector3; tc: Vector3; ft: Vector3; tt: Vector3 } | null = null;
   private enter: { t0: number; d: number } | null = null;
   private raf = 0;
@@ -292,12 +305,13 @@ export class Studio {
       if (this.SC.hour && this.SC.hour.centre !== centre) this.drop('hour');
       this.hourCentre = centre;
     }
-    if (key === 'river' && this.SC.river && this.SC.river.dir !== (this.lang === 'ar' ? -1 : 1)) this.drop('river');
     const next = this.ensure(key);
     const { from, to, birth } = this.medals;
     const fromArr = from.array as Float32Array;
-    if (!instant && this.SC[this.cur]) fromArr.set(this.currentPositions());
+    if (!instant && this.relayoutFrom) fromArr.set(this.relayoutFrom);
+    else if (!instant && this.SC[this.cur]) fromArr.set(this.currentPositions());
     else fromArr.set(next.pos);
+    this.relayoutFrom = null;
     (to.array as Float32Array).set(next.pos);
     from.needsUpdate = true;
     to.needsUpdate = true;
@@ -368,6 +382,11 @@ export class Studio {
     this.o.onState({ spin: on });
   }
 
+  setPan(on: boolean) {
+    setDragMode(this.controls, on);
+    this.o.onState({ pan: on });
+  }
+
   fit() {
     const v = this.SC[this.cur]?.view;
     if (v) this.flyTo(v.cam, v.target, 1200);
@@ -381,10 +400,12 @@ export class Studio {
     }
     this.lang = lang;
     this.labels.reset();
-    for (const s of Object.values(this.SC)) s.relang?.();
-    // The Time River's direction follows the language.
-    if (this.cur === 'river') this.setScene('river');
-    else if (this.SC.river) this.drop('river');
+    this.applyViewOffset();
+    // Scenes read the reading direction when they are built (Arabic mirrors them), so rebuild
+    // the open scene with the portraits gliding to their new places, and drop the cached ones.
+    this.relayoutFrom = this.currentPositions();
+    for (const key of Object.keys(this.SC) as SceneKey[]) this.drop(key);
+    this.setScene(this.cur);
   }
 
   setDark(dark: boolean) {
@@ -475,8 +496,8 @@ export class Studio {
   }
 
   private flyTo(camIn: Vector3, target: Vector3, d = 1200) {
-    // Narrow (portrait) stages need the camera further back.
-    const k = Math.max(1, 1.45 / this.camera.aspect) ** 0.85;
+    // Narrow (portrait) stages need the camera further back; on wide stages only the area beside the scene rail counts.
+    const k = Math.max(1, 1.45 / this.freeAspect()) ** 0.85;
     const cam = target.clone().add(camIn.clone().sub(target).multiplyScalar(k));
     if (!d || this.o.reduced) {
       this.fly = null;
@@ -499,7 +520,9 @@ export class Studio {
     if (!cur) return;
     const p = this.personPos(i, new Vector3());
     const dir = this.camera.position.clone().sub(this.controls.target).normalize();
-    if (dir.y < 0.15) dir.y = 0.3;
+    // Approach from the side the scene's own view looks from (under a canopy, or the far face of a disk).
+    const up = cur.view.cam.y < cur.view.target.y ? -1 : 1;
+    if (dir.y * up < 0.15) dir.y = 0.3 * up;
     dir.normalize();
     this.flyTo(p.clone().addScaledVector(dir, cur.follow), p, d);
   }
@@ -741,6 +764,47 @@ export class Studio {
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.composer.setSize(w, h);
     this.camera.aspect = w / h;
+    this.applyViewOffset();
+  }
+
+  /**
+   * On wide stages the scene rail covers the start side, so shift the projection centre
+   * half the rail's width towards the end side: the camera target then sits in the middle
+   * of the free area (picking and labels use the same matrix, so they stay aligned).
+   */
+  private railShift() {
+    return matchMedia(RAIL_MEDIA).matches && this.o.container.clientWidth > RAIL_WIDTH * 2 ? RAIL_WIDTH / 2 : 0;
+  }
+
+  /** Aspect ratio of the stage area not covered by the scene rail. */
+  private freeAspect() {
+    const h = this.o.container.clientHeight;
+    return h ? (this.o.container.clientWidth - this.railShift() * 2) / h : this.camera.aspect;
+  }
+
+  /**
+   * Where the projection centre should sit, in px towards the end side: half the rail's width, minus
+   * half the person panel's while someone is selected, so the picked person lands between the two.
+   */
+  private shiftTarget() {
+    const w = this.o.container.clientWidth;
+    const panel =
+      this.sel && matchMedia(RAIL_MEDIA).matches && w > RAIL_WIDTH + PANEL_WIDTH + 200 ? PANEL_WIDTH / 2 : 0;
+    return this.railShift() - panel;
+  }
+
+  /** Jumps to the target shift (resize, language); frame() eases towards it after a selection. */
+  private applyViewOffset() {
+    this.viewShift = this.shiftTarget();
+    this.setShift(this.viewShift);
+  }
+
+  private setShift(shift: number) {
+    const w = this.o.container.clientWidth;
+    const h = this.o.container.clientHeight;
+    if (!w || !h) return;
+    if (Math.abs(shift) > 0.5) this.camera.setViewOffset(w, h, this.lang === 'ar' ? shift : -shift, 0, w, h);
+    else this.camera.clearViewOffset();
     this.camera.updateProjectionMatrix();
   }
 
@@ -751,6 +815,11 @@ export class Studio {
     this.last = now;
     const U = this.U;
     U.uTime.value += dt;
+    const shift = this.shiftTarget();
+    if (Math.abs(shift - this.viewShift) > 0.5) {
+      this.viewShift += (shift - this.viewShift) * Math.min(1, dt * (this.o.reduced ? 60 : 5));
+      this.setShift(this.viewShift);
+    }
     if (this.playing) {
       this.playAcc += dt;
       const step = this.M.n > 100 ? 0.09 : 0.14;

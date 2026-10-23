@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Client-demo phase (spec decision #9): the web app is built with **no backend**. `apps/web` calls a mock API that runs in the browser; `apps/api` does not exist yet. `docs/SPEC.md` (v0.6) is the source of truth; read it before designing or changing behavior, and update it (version + "Decisions" table in §10) when a decision changes. `docs/DEMO-BRIEF.md` describes how the demo code is organised and the rules each change must follow.
+Client-demo phase (spec decision #9): the web app is built with **no backend**. `apps/web` calls a mock API that runs in the browser; `apps/api` does not exist yet. `docs/SPEC.md` (v0.7) is the source of truth; read it before designing or changing behavior, and update it (version + "Decisions" table in §10) when a decision changes. `docs/DEMO-BRIEF.md` describes how the demo code is organised and the rules each change must follow.
 
 ## Commands
 

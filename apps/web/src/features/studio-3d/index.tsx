@@ -2,19 +2,30 @@ import { Button, cn } from '@family-tree/ui';
 import { useNavigate } from '@tanstack/react-router';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  BookOpen,
   Box,
   Building2,
   Crosshair,
+  Dna,
+  Droplets,
   Expand,
   Hourglass,
+  Lamp,
   Layers3,
+  Mountain,
+  Move,
+  Orbit,
   Pause,
   Play,
   Rotate3d,
   Scan,
   Shrink,
   Sparkles,
+  Sprout,
+  TrainFront,
   TreeDeciduous,
+  TreePalm,
+  Trees,
   Waves,
   X,
 } from 'lucide-react';
@@ -34,6 +45,16 @@ import { SCENES, type SceneKey } from './scenes/types.ts';
 
 const SCENE_ICONS: Record<SceneKey, ComponentType<{ className?: string }>> = {
   tree: TreeDeciduous,
+  bonsai: Sprout,
+  helix: Dna,
+  lantern: Lamp,
+  metro: TrainFront,
+  paper: BookOpen,
+  terrain: Mountain,
+  banyan: Trees,
+  delta: Droplets,
+  palm: TreePalm,
+  galaxy: Orbit,
   river: Waves,
   hour: Hourglass,
   city: Building2,
@@ -111,6 +132,7 @@ export function Studio3D({ graph, selectedId, onSelect, year }: TreeViewProps) {
     playing: false,
     follow: true,
     spin: !reduced,
+    pan: false,
     quality: 2,
     fps: 60,
     calls: 0,
@@ -161,6 +183,8 @@ export function Studio3D({ graph, selectedId, onSelect, year }: TreeViewProps) {
       return;
     }
     engineRef.current = engine;
+    // A new engine starts with drag-to-turn, so the Move button must too.
+    setState((s) => (s.pan ? { ...s, pan: false } : s));
     return () => {
       engine.dispose();
       engineRef.current = null;
@@ -254,6 +278,7 @@ export function Studio3D({ graph, selectedId, onSelect, year }: TreeViewProps) {
         onPlay={() => engineRef.current?.togglePlay()}
         onFollow={() => engineRef.current?.setFollow(!state.follow)}
         onSpin={() => engineRef.current?.setSpin(!state.spin)}
+        onPan={() => engineRef.current?.setPan(!state.pan)}
         onFit={() => engineRef.current?.fit()}
         onFull={toggleFull}
       />
@@ -305,7 +330,10 @@ function SceneRail({
     // Bottom-start, above the timeline: clear of the route toolbar (top) and the person panel (end side).
     <div className="pointer-events-none absolute inset-x-3 bottom-[4.75rem] z-10 flex md:inset-x-auto md:start-3">
       <div className="glass pointer-events-auto flex max-w-full flex-col gap-1 rounded-2xl p-1.5 shadow-lg md:w-56">
-        <nav aria-label={t('scenesLabel')} className="flex gap-0.5 overflow-x-auto [scrollbar-width:none] md:flex-col">
+        <nav
+          aria-label={t('scenesLabel')}
+          className="flex gap-0.5 overflow-x-auto [scrollbar-width:none] md:max-h-[max(9rem,min(23rem,calc(100vh-24rem)))] md:flex-col md:overflow-y-auto md:overflow-x-hidden md:pb-6 md:[mask-image:linear-gradient(to_bottom,black_calc(100%-2.5rem),transparent)] md:[scrollbar-width:thin]"
+        >
           {SCENES.map((key) => {
             const Icon = SCENE_ICONS[key];
             const on = state.scene === key;
@@ -377,11 +405,25 @@ interface TimelineProps {
   onPlay(): void;
   onFollow(): void;
   onSpin(): void;
+  onPan(): void;
   onFit(): void;
   onFull(): void;
 }
 
-function Timeline({ model, min, state, dark, full, onYear, onPlay, onFollow, onSpin, onFit, onFull }: TimelineProps) {
+function Timeline({
+  model,
+  min,
+  state,
+  dark,
+  full,
+  onYear,
+  onPlay,
+  onFollow,
+  onSpin,
+  onPan,
+  onFit,
+  onFull,
+}: TimelineProps) {
   const { t } = useTranslation('studio');
   const tool = (on: boolean | undefined) =>
     cn('size-9 shrink-0 rounded-full', on ? 'bg-accent text-primary' : 'text-muted-foreground hover:text-foreground');
@@ -438,6 +480,17 @@ function Timeline({ model, min, state, dark, full, onYear, onPlay, onFollow, onS
             onClick={onSpin}
           >
             <Rotate3d className="size-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className={tool(state.pan)}
+            aria-pressed={state.pan}
+            aria-label={t('pan')}
+            title={t('pan')}
+            onClick={onPan}
+          >
+            <Move className="size-4" />
           </Button>
           <Button
             size="icon"

@@ -16,5 +16,20 @@
     "studio": "Animated 3D scenes of the family over time"
   },
   "searchPlaceholder": "Find a person…",
-  "pickPerson": "Pick a person to centre the view on"
+  "pickPerson": "Pick a person to centre the view on",
+  "scope": {
+    "label": "Show in the tree",
+    "chip": "{{name}} · {{scope}}",
+    "clear": "Show everyone again",
+    "options": {
+      "all": "Everyone",
+      "line": "Full line",
+      "down": "Descendants"
+    },
+    "hints": {
+      "all": "Show the whole family",
+      "line": "Show only this person, their ancestors and all their descendants",
+      "down": "Show only this person, their spouse and everyone descended from them"
+    }
+  }
 }

@@ -1,13 +1,74 @@
 {
   "scenesLabel": "Scene",
   "scenes": {
-    "tree": { "name": "Living Tree", "desc": "Lines grow as branches" },
-    "river": { "name": "Time River", "desc": "Each life is a ribbon in time" },
-    "hour": { "name": "Hourglass", "desc": "One person, past above, future below" },
-    "city": { "name": "Heritage City", "desc": "Each line is a tower" },
-    "mandala": { "name": "Girih Mandala", "desc": "Generations as star tiles" },
-    "sky": { "name": "Constellation", "desc": "Generations as orbits" },
-    "glass": { "name": "Glass Strata", "desc": "Generations as plates" }
+    "tree": {
+      "name": "Living Tree",
+      "desc": "Lines grow as branches"
+    },
+    "bonsai": {
+      "name": "Bonsai",
+      "desc": "Compact tree: the whole family at a glance"
+    },
+    "helix": {
+      "name": "Family Helix",
+      "desc": "Generations climb a double helix"
+    },
+    "lantern": {
+      "name": "Lantern Lake",
+      "desc": "Each life is a lantern over water"
+    },
+    "metro": {
+      "name": "Family Metro",
+      "desc": "Each line is a transit route"
+    },
+    "paper": {
+      "name": "Paper Pop-up",
+      "desc": "Generations as layers of paper"
+    },
+    "terrain": {
+      "name": "Family Atlas",
+      "desc": "Lines rise as hills on a map"
+    },
+    "banyan": {
+      "name": "Banyan",
+      "desc": "Roots drop down and become new trunks"
+    },
+    "delta": {
+      "name": "River Delta",
+      "desc": "One river spreads into many channels"
+    },
+    "palm": {
+      "name": "Date Palm Oasis",
+      "desc": "Offshoots grow around the mother palm"
+    },
+    "galaxy": {
+      "name": "Family Galaxy",
+      "desc": "Each line is a spiral arm of stars"
+    },
+    "river": {
+      "name": "Time River",
+      "desc": "Each life is a ribbon in time"
+    },
+    "hour": {
+      "name": "Hourglass",
+      "desc": "One person, past above, future below"
+    },
+    "city": {
+      "name": "Heritage City",
+      "desc": "Each line is a tower"
+    },
+    "mandala": {
+      "name": "Girih Mandala",
+      "desc": "Generations as star tiles"
+    },
+    "sky": {
+      "name": "Constellation",
+      "desc": "Generations as orbits"
+    },
+    "glass": {
+      "name": "Glass Strata",
+      "desc": "Generations as plates"
+    }
   },
   "hourBack": "Click again to centre the founder",
   "timeline": "Timeline",
@@ -16,6 +77,7 @@
   "year": "Year",
   "follow": "Camera follows new births while playing",
   "spin": "Auto-rotate",
+  "pan": "Move mode: drag to slide the view. Off: drag turns it and right-drag slides it.",
   "fit": "Overview",
   "fullscreen": "Full screen",
   "exitFullscreen": "Exit full screen",

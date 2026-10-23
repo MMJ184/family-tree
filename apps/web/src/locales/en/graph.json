@@ -3,6 +3,7 @@
   "mode": { "2d": "2D", "3d": "3D" },
   "modeHint": { "2d": "Flat network you can drag and zoom", "3d": "Rotate the network in 3D" },
   "fit": "Fit everyone on screen",
+  "pan": "Move mode: drag to slide the view. Off: drag turns it and right-drag slides it.",
   "legend": { "parentChild": "Parent and child", "marriage": "Marriage", "business": "Business" },
   "marriedIn": "Married in",
   "since": "Since",
