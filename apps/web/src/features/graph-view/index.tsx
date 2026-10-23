@@ -1,3 +1,4 @@
+import { branchOf } from '@family-tree/shared';
 import { cn } from '@family-tree/ui';
 import { Maximize } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -30,6 +31,8 @@ export function FamilyGraphView({ graph, selectedId, onSelect, year }: TreeViewP
   handleRef.current = handle;
   const selectedRef = useRef(selectedId);
   selectedRef.current = selectedId;
+  const graphRef = useRef(graph);
+  graphRef.current = graph;
 
   const prevStore = useRef<GraphStore | null>(null);
   const store = useMemo(() => {
@@ -53,8 +56,11 @@ export function FamilyGraphView({ graph, selectedId, onSelect, year }: TreeViewP
     rev: 0,
     onSelect: (id) => onSelectRef.current(id),
     onSettled: () => {
-      // Re-fit once the layout has spread out, unless the viewer took over.
-      if (!userMoved.current && !selectedRef.current) handleRef.current?.fit(600);
+      // Re-fit (the whole graph, or the selected person's branch) once the layout has spread out, unless the viewer took over.
+      if (userMoved.current) return;
+      const id = selectedRef.current;
+      if (id) handleRef.current?.focus(id, branchOf(graphRef.current, id));
+      else handleRef.current?.fit(600);
     },
   };
   const ctl = ctlRef.current;
@@ -109,7 +115,7 @@ export function FamilyGraphView({ graph, selectedId, onSelect, year }: TreeViewP
     const timer = setTimeout(
       () => {
         const id = selectedRef.current;
-        if (id) h?.focus(id);
+        if (id) h?.focus(id, branchOf(graphRef.current, id));
         else h?.fit();
       },
       mode === '2d' ? 1600 : 1800,
@@ -140,7 +146,11 @@ export function FamilyGraphView({ graph, selectedId, onSelect, year }: TreeViewP
     if (!newStore) return;
     // Another family (or edited data): fit again once it has spread out.
     userMoved.current = false;
-    const timer = setTimeout(() => handle.fit(), 1600);
+    const timer = setTimeout(() => {
+      const id = selectedRef.current;
+      if (id) handle.focus(id, branchOf(graphRef.current, id));
+      else handle.fit();
+    }, 1600);
     return () => clearTimeout(timer);
   }, [handle, store, year, ctl]);
 
@@ -174,7 +184,7 @@ export function FamilyGraphView({ graph, selectedId, onSelect, year }: TreeViewP
     ctl.selectedId = selectedId;
     if (!handle) return;
     handle.refresh();
-    if (selectedId) handle.focus(selectedId);
+    if (selectedId) handle.focus(selectedId, branchOf(graphRef.current, selectedId));
   }, [handle, selectedId, ctl]);
 
   return (

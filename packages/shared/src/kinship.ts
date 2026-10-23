@@ -62,6 +62,19 @@ export function descendantsOf(edges: Edges, personId: Id): Set<Id> {
   return out;
 }
 
+/**
+ * A person's branch, as the tree views zoom to it: the person, their parents,
+ * their spouses, and every descendant with the descendants' spouses.
+ */
+export function branchOf(edges: Edges, personId: Id): Set<Id> {
+  const out = new Set<Id>([personId, ...parentsOf(edges, personId)]);
+  for (const id of [personId, ...descendantsOf(edges, personId)]) {
+    out.add(id);
+    for (const s of spousesOf(edges, id)) out.add(s);
+  }
+  return out;
+}
+
 export type ParentLinkError = 'SELF' | 'CYCLE' | 'DUPLICATE' | 'TOO_MANY_BIOLOGICAL_PARENTS';
 
 /**

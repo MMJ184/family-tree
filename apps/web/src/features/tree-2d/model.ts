@@ -227,6 +227,36 @@ export function countDescendants(model: TreeModel, pid: string): number {
   return seen.size;
 }
 
+/**
+ * The people and unions that make up `pid`'s branch: the person, their parents,
+ * their spouses and every descendant with the descendants' spouses. The tree
+ * zooms to fit this set when a person is selected.
+ */
+export function branchIds(model: TreeModel, pid: string): Set<string> {
+  const out = new Set<string>([pid]);
+  const parents = model.parentUnion.get(pid);
+  if (parents) {
+    out.add(parents.id);
+    out.add(parents.a);
+    if (parents.b != null) out.add(parents.b);
+  }
+  const stack = [pid];
+  while (stack.length) {
+    const cur = stack.pop() as string;
+    for (const u of model.unionsOf.get(cur) ?? []) {
+      out.add(u.id);
+      const partner = partnerOf(u, cur);
+      if (partner) out.add(partner);
+      for (const k of u.kids) {
+        if (out.has(k)) continue;
+        out.add(k);
+        stack.push(k);
+      }
+    }
+  }
+  return out;
+}
+
 /** Collapsed people whose branch currently hides `pid` (its ancestors along union links). */
 export function collapsedAncestors(model: TreeModel, pid: string, collapsed: ReadonlySet<string>): string[] {
   const out = new Set<string>();

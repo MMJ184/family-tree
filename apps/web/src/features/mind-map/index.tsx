@@ -136,14 +136,19 @@ export function FamilyMindMap({ graph, selectedId, onSelect, year }: TreeViewPro
       // Wait for layout and web fonts, which change the topic sizes.
       const timer = setTimeout(() => {
         lastFit.current = fitKey;
-        if (meRef.current === me) fitMap(me, !!selectedRef.current, rtlRef.current);
-        void document.fonts?.ready.then(
-          () => meRef.current === me && fitMap(me, !!selectedRef.current, rtlRef.current),
-        );
+        const refit = () => {
+          if (meRef.current !== me) return;
+          const sel = selectedRef.current;
+          // The whole-family map zooms to the selected person's branch; the person map is already about them.
+          const el = sel && mode === 'family' ? highlight(me, built, sel) : null;
+          fitMap(me, !!sel, rtlRef.current, el ? branchTopics(el) : undefined);
+        };
+        refit();
+        void document.fonts?.ready.then(refit);
       }, 60);
       return () => clearTimeout(timer);
     }
-  }, [built, fitKey]);
+  }, [built, fitKey, mode]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: theme and systemDark are triggers; colours are read from the DOM.
   useEffect(() => {
@@ -153,20 +158,21 @@ export function FamilyMindMap({ graph, selectedId, onSelect, year }: TreeViewPro
     if (builtRef.current) highlight(me, builtRef.current, selectedRef.current);
   }, [theme, systemDark]);
 
-  // Highlight the selected person and bring them into view.
+  // Highlight the selected person and zoom to their branch (parent, spouses, descendants).
   useEffect(() => {
     const me = meRef.current;
     const b = builtRef.current;
     if (!me || !b) return;
     const el = highlight(me, b, selectedId);
-    if (el && mode === 'family') me.scrollIntoView(el, true);
+    if (el && mode === 'family') fitMap(me, true, rtlRef.current, branchTopics(el));
   }, [selectedId, mode]);
 
   const pickHint = mode === 'person' && !selectedId;
 
   return (
     <div className="relative size-full overflow-hidden" style={BG}>
-      <div ref={elRef} className="ft-mindmap absolute inset-0" data-rtl={rtl} />
+      {/* Mind Elixir forces position: relative on its element, so size it rather than pin it. */}
+      <div ref={elRef} className="ft-mindmap size-full" data-rtl={rtl} />
 
       <div className="glass absolute start-3 top-16 z-10 flex items-center gap-0.5 rounded-full p-1 shadow-lg">
         <fieldset className="flex gap-0.5" aria-label={t('modeLabel')}>
@@ -220,10 +226,20 @@ function highlight(me: MindElixirInstance, b: BuiltMind, personId: string | null
 }
 
 /**
- * Fits the whole map between the floating toolbar and the year slider (never above
+ * The topics of a person's branch in the map: their own topic and everything
+ * under it (spouse branches, children, grandchildren). The parent topic is left
+ * out because in a sideways map it usually sits far away, at the root.
+ */
+function branchTopics(tpc: HTMLElement): Element[] {
+  const wrapper = tpc.closest('me-wrapper');
+  return wrapper ? [...wrapper.querySelectorAll('me-tpc')] : [tpc];
+}
+
+/**
+ * Fits the whole map (or just `topics`) between the floating toolbar and the year slider (never above
  * 100%), leaving room for the person panel at the end side when it is open.
  */
-function fitMap(me: MindElixirInstance, panelOpen: boolean, rtl: boolean) {
+function fitMap(me: MindElixirInstance, panelOpen: boolean, rtl: boolean, topics?: Element[]) {
   const full = (me.el as HTMLElement).getBoundingClientRect();
   const panel = panelOpen && full.width >= 768 ? Math.min(352, full.width - 24) + 12 : 0;
   const host = { left: full.left + (rtl ? panel : 0), top: full.top, width: full.width - panel, height: full.height };
@@ -232,7 +248,7 @@ function fitMap(me: MindElixirInstance, panelOpen: boolean, rtl: boolean) {
     let y0 = Number.POSITIVE_INFINITY;
     let x1 = Number.NEGATIVE_INFINITY;
     let y1 = Number.NEGATIVE_INFINITY;
-    for (const e of (me.el as HTMLElement).querySelectorAll('me-tpc')) {
+    for (const e of topics ?? (me.el as HTMLElement).querySelectorAll('me-tpc')) {
       const r = e.getBoundingClientRect();
       x0 = Math.min(x0, r.left);
       y0 = Math.min(y0, r.top);
@@ -245,7 +261,10 @@ function fitMap(me: MindElixirInstance, panelOpen: boolean, rtl: boolean) {
   if (!(b.w > 0)) return;
   const top = 110;
   const bottom = 100;
-  const k = Math.min(1, me.scaleVal * Math.min((host.width - 48) / b.w, (host.height - top - bottom) / b.h));
+  const k = Math.min(
+    topics ? 1.2 : 1,
+    me.scaleVal * Math.min((host.width - 48) / b.w, (host.height - top - bottom) / b.h),
+  );
   me.scale(Math.max(0.2, k));
   b = box();
   me.move(

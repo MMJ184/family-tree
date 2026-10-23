@@ -1,6 +1,6 @@
 {
   "controls": {
-    "focus": "Centre on the selected person",
+    "focus": "Fit the selected person and their family branch",
     "fit": "Show the whole tree",
     "expandAll": "Expand all branches",
     "collapse": "Collapse this branch",

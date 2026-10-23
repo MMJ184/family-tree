@@ -2,7 +2,7 @@ import ForceGraph from 'force-graph';
 import { applyForces, isHiLink } from './forces.ts';
 import type { GLink, GNode } from './model.ts';
 import { CARD, cardSize, paintCard, paintDot, withAlpha } from './paint.ts';
-import { type GraphHandle, isOn, panelShift, type ViewCtl } from './types.ts';
+import { type GraphHandle, isOn, panelShift, VIEW_BOTTOM, VIEW_TOP, type ViewCtl } from './types.ts';
 
 // 2D Obsidian-style graph on canvas (force-graph). Cards turn into round
 // portraits when zoomed far out so 2,000 people stay smooth.
@@ -13,6 +13,9 @@ const DOT_R = 10;
 const CARD_W = CARD.p[0];
 /** Portrait radius in graph units, never smaller than ~4px on screen. */
 const dotR = (k: number) => Math.max(DOT_R, 4 / k);
+/** Padding around a fitted branch, and the closest a small branch zooms in. */
+const FIT_PAD = 24;
+const FOCUS_MAX_ZOOM = 3;
 
 export function createGraph2D(el: HTMLElement, ctl: ViewCtl): GraphHandle {
   const lod = (k: number) => CARD_W * k < LOD_PX;
@@ -76,9 +79,31 @@ export function createGraph2D(el: HTMLElement, ctl: ViewCtl): GraphHandle {
     refresh() {
       // The canvas redraws every frame; nothing to rebuild.
     },
-    focus(id) {
-      const n = f.graphData().nodes.find((x) => x.id === id);
-      if (n) focusNode(n);
+    focus(_id, branch) {
+      // Fit the bounding box of the branch's cards into the area clear of toolbars and the panel.
+      let x0 = Number.POSITIVE_INFINITY;
+      let y0 = Number.POSITIVE_INFINITY;
+      let x1 = Number.NEGATIVE_INFINITY;
+      let y1 = Number.NEGATIVE_INFINITY;
+      for (const n of f.graphData().nodes) {
+        if (!branch.has(n.id) || n.x === undefined || n.y === undefined) continue;
+        const [w, h] = cardSize(n);
+        x0 = Math.min(x0, n.x - w / 2);
+        x1 = Math.max(x1, n.x + w / 2);
+        y0 = Math.min(y0, n.y - h / 2);
+        y1 = Math.max(y1, n.y + h / 2);
+      }
+      if (!Number.isFinite(x0)) return;
+      const shift = panelShift(f.width());
+      const freeW = f.width() - 2 * shift - 2 * FIT_PAD;
+      const freeH = f.height() - VIEW_TOP - VIEW_BOTTOM - 2 * FIT_PAD;
+      const k = Math.min(FOCUS_MAX_ZOOM, Math.max(0.05, Math.min(freeW / (x1 - x0), freeH / (y1 - y0))));
+      // Screen centre sits half a panel towards the panel, and between the toolbars vertically.
+      const rtl = ctl.lang === 'ar';
+      const cx = (x0 + x1) / 2 + ((rtl ? -1 : 1) * shift) / k;
+      const cy = (y0 + y1) / 2 - (VIEW_TOP - VIEW_BOTTOM) / 2 / k;
+      f.centerAt(cx, cy, 600);
+      f.zoom(k, 600);
     },
     fit(ms = 700) {
       f.zoomToFit(ms, 110);

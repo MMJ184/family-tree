@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { matchesSearch, normalizeSearch } from './arabic.ts';
 import { formatPartialDate, lifeSpan, makePartialDate } from './dates.ts';
-import { checkParentLink, generations, siblingsOf } from './kinship.ts';
+import { branchOf, checkParentLink, generations, siblingsOf } from './kinship.ts';
 import type { Marriage, ParentChild } from './schemas.ts';
 
 const pc = (parentId: string, childId: string): ParentChild => ({
@@ -57,6 +57,10 @@ describe('kinship', () => {
     parentChild: [pc('k', 'a'), pc('f', 'a'), pc('k', 'm'), pc('f', 'm'), pc('a', 'r')],
     marriages: [mar('k', 'f'), mar('a', 'w')],
   };
+  it('builds a branch from parents, spouses and descendants, without siblings', () => {
+    expect([...branchOf(edges, 'a')].sort()).toEqual(['a', 'f', 'k', 'r', 'w']);
+    expect([...branchOf(edges, 'k')].sort()).toEqual(['a', 'f', 'k', 'm', 'r', 'w']);
+  });
   it('derives siblings from shared parents', () => {
     expect(siblingsOf(edges, 'a')).toEqual(['m']);
   });

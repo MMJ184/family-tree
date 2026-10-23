@@ -16,7 +16,8 @@ export interface GraphHandle {
   setData(d: VisibleData, force: boolean): void;
   /** Repaints after colours, language, year or selection changed. */
   refresh(): void;
-  focus(id: string): void;
+  /** Zooms so the person's branch (ids from `branchOf`) fits the free screen area. */
+  focus(id: string, branch: ReadonlySet<string>): void;
   fit(ms?: number): void;
   resize(w: number, h: number): void;
   destroy(): void;
@@ -27,3 +28,7 @@ export const isOn = (ctl: ViewCtl, id: string) =>
 
 /** Half the width the person panel covers at the end side (0 on small screens). */
 export const panelShift = (width: number) => (width >= 768 ? (Math.min(352, width - 24) + 12) / 2 : 0);
+
+/** Screen space the floating toolbars take at the top and the year slider at the bottom. */
+export const VIEW_TOP = 112;
+export const VIEW_BOTTOM = 88;

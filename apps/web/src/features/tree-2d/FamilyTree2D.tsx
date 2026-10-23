@@ -23,6 +23,7 @@ import { personName, personYears } from '#/lib/display.ts';
 import { isDark, usePrefs } from '#/lib/prefs.ts';
 import { CARD_H, CARD_W, layoutTree, type Point, UNION_SIZE } from './layout.ts';
 import {
+  branchIds,
   buildModel,
   collapsedAncestors,
   collapsedHidden,
@@ -36,6 +37,12 @@ import { genderColor, nodeTypes, type TreeFlowNode, type TreeNodeContext, TreeNo
 
 /** Width the person panel takes at the end side (route: w-[22rem] plus end-3). */
 const PANEL_PX = 352 + 12;
+/** Screen space taken by the floating toolbar (top) and year slider (bottom), plus breathing room. */
+const VIEW_TOP = 64;
+const VIEW_BOTTOM = 88;
+const VIEW_PAD = 24;
+/** A small branch (one card and a parent couple) stops zooming in here, so cards stay card-sized. */
+const FOCUS_MAX_ZOOM = 1.1;
 
 export function FamilyTree2D(props: TreeViewProps) {
   return (
@@ -253,18 +260,45 @@ function TreeCanvas({ graph, selectedId, onSelect, year }: TreeViewProps) {
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
+  // Zoom so the selected person's whole branch (parents, spouses, descendants) fits the screen.
   const centreOn = useCallback(
     (pid: string, duration = 600) => {
-      const node = rf.getNode(pid);
-      if (!node) return;
-      const zoom = Math.max(rf.getZoom(), 0.85);
-      const width = containerRef.current?.clientWidth ?? 0;
-      // Keep the card clear of the person panel that opens at the end side.
-      const shift = width >= 768 ? PANEL_PX / 2 / zoom : 0;
-      const cx = node.position.x + CARD_W / 2 + (rtl ? -shift : shift);
-      void rf.setCenter(cx, node.position.y + CARD_H / 2, { zoom, duration });
+      const el = containerRef.current;
+      if (!el || !rf.getNode(pid)) return;
+      let x0 = Number.POSITIVE_INFINITY;
+      let y0 = Number.POSITIVE_INFINITY;
+      let x1 = Number.NEGATIVE_INFINITY;
+      let y1 = Number.NEGATIVE_INFINITY;
+      for (const id of branchIds(model, pid)) {
+        const n = rf.getNode(id);
+        if (!n || n.hidden) continue;
+        const w = n.type === 'union' ? UNION_SIZE : CARD_W;
+        const h = n.type === 'union' ? UNION_SIZE : CARD_H;
+        x0 = Math.min(x0, n.position.x);
+        y0 = Math.min(y0, n.position.y);
+        x1 = Math.max(x1, n.position.x + w);
+        y1 = Math.max(y1, n.position.y + h);
+      }
+      // Free screen area: below the toolbar, above the year slider, clear of the person panel.
+      const panel = el.clientWidth >= 768 ? PANEL_PX : 0;
+      const left = rtl ? panel : 0;
+      const width = el.clientWidth - panel;
+      const top = VIEW_TOP;
+      const height = el.clientHeight - VIEW_TOP - VIEW_BOTTOM;
+      const zoom = Math.min(
+        FOCUS_MAX_ZOOM,
+        Math.max(0.05, Math.min((width - 2 * VIEW_PAD) / (x1 - x0), (height - 2 * VIEW_PAD) / (y1 - y0))),
+      );
+      void rf.setViewport(
+        {
+          x: left + width / 2 - ((x0 + x1) / 2) * zoom,
+          y: top + height / 2 - ((y0 + y1) / 2) * zoom,
+          zoom,
+        },
+        { duration },
+      );
     },
-    [rf, rtl],
+    [rf, rtl, model],
   );
 
   // Deferred camera moves, cancelled on unmount so they never touch a torn-down React Flow.

@@ -1,16 +1,18 @@
 import ForceGraph3D, { type ForceGraph3DInstance } from '3d-force-graph';
 // The app dedupes `three`, so this is the same copy 3d-force-graph renders with.
-import { CanvasTexture, Sprite, SpriteMaterial, SRGBColorSpace } from 'three';
+import { CanvasTexture, type PerspectiveCamera, Sprite, SpriteMaterial, SRGBColorSpace } from 'three';
 import { applyForces, isHiLink } from './forces.ts';
 import type { GLink, GNode } from './model.ts';
 import { hasBizAt, isDeadAt } from './model.ts';
 import { cardSize, paintCard } from './paint.ts';
-import { type GraphHandle, isOn, type ViewCtl } from './types.ts';
+import { type GraphHandle, isOn, panelShift, VIEW_BOTTOM, VIEW_TOP, type ViewCtl } from './types.ts';
 
 // 3D version on three.js (3d-force-graph): the same photo cards, painted once
 // onto a canvas texture per node and repainted only when their look changes.
 
 const PAD = 12;
+/** Extra room around a fitted branch. */
+const FIT_MARGIN = 1.1;
 
 interface Card {
   sprite: Sprite;
@@ -139,9 +141,52 @@ export function createGraph3D(el: HTMLElement, ctl: ViewCtl): GraphHandle {
       restyle();
     },
     refresh: restyle,
-    focus(id) {
-      const n = f.graphData().nodes.find((x) => x.id === id);
-      if (n) fly(n);
+    focus(id, branch) {
+      const nodes = f.graphData().nodes.filter((n) => branch.has(n.id) && n.x !== undefined);
+      if (nodes.length <= 1) {
+        const n = f.graphData().nodes.find((x) => x.id === id);
+        if (n) fly(n);
+        return;
+      }
+      // Centre of the branch, and the radius of a sphere around its cards.
+      const c = { x: 0, y: 0, z: 0 };
+      for (const n of nodes) {
+        c.x += (n.x ?? 0) / nodes.length;
+        c.y += (n.y ?? 0) / nodes.length;
+        c.z += (n.z ?? 0) / nodes.length;
+      }
+      let r = 0;
+      for (const n of nodes)
+        r = Math.max(r, Math.hypot((n.x ?? 0) - c.x, (n.y ?? 0) - c.y, (n.z ?? 0) - c.z) + cardSize(n)[0] / 2);
+      // Back the camera off along its current direction until the sphere fits the free screen area.
+      const cam = f.camera() as PerspectiveCamera;
+      const tanV = Math.tan((cam.fov * Math.PI) / 360);
+      const w = f.width();
+      const h = f.height();
+      const fitV = (h - VIEW_TOP - VIEW_BOTTOM) / h;
+      const fitH = (w - 2 * panelShift(w)) / w;
+      const dist = Math.max(r / (tanV * fitV), r / (tanV * cam.aspect * fitH)) * FIT_MARGIN;
+      const p = f.cameraPosition();
+      const dx = p.x - c.x;
+      const dy = p.y - c.y;
+      const dz = p.z - c.z;
+      const len = Math.hypot(dx, dy, dz) || 1;
+      // Slide camera and target sideways (away from the panel) and up (between the toolbars), in screen pixels.
+      const perPx = (2 * dist * tanV) / h;
+      const side = (ctl.lang === 'ar' ? -1 : 1) * panelShift(w) * perPx;
+      const lift = ((VIEW_TOP - VIEW_BOTTOM) / 2) * perPx;
+      const m = cam.matrixWorld.elements;
+      const off = {
+        x: (m[0] ?? 0) * side + (m[4] ?? 0) * lift,
+        y: (m[1] ?? 0) * side + (m[5] ?? 0) * lift,
+        z: (m[2] ?? 0) * side + (m[6] ?? 0) * lift,
+      };
+      const target = { x: c.x + off.x, y: c.y + off.y, z: c.z + off.z };
+      f.cameraPosition(
+        { x: target.x + (dx / len) * dist, y: target.y + (dy / len) * dist, z: target.z + (dz / len) * dist },
+        target,
+        900,
+      );
     },
     fit(ms = 700) {
       f.zoomToFit(ms, 60);
