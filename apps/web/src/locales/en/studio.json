@@ -1,9 +1,11 @@
 {
+  "stage": "3D family studio",
+  "stageHint": "Press the question mark key to see the mouse, touch and keyboard controls.",
   "scenesLabel": "Scene",
   "scenes": {
     "tree": {
       "name": "Living Tree",
-      "desc": "Lines grow as branches"
+      "desc": "An old Ghaf tree, one limb per line"
     },
     "bonsai": {
       "name": "Bonsai",
@@ -15,7 +17,7 @@
     },
     "lantern": {
       "name": "Lantern Lake",
-      "desc": "Each life is a lantern over water"
+      "desc": "Lanterns tied together over a still lake"
     },
     "metro": {
       "name": "Family Metro",
@@ -23,11 +25,11 @@
     },
     "paper": {
       "name": "Paper Pop-up",
-      "desc": "Generations as layers of paper"
+      "desc": "Cut-paper layers in an open book"
     },
     "terrain": {
       "name": "Family Atlas",
-      "desc": "Lines rise as hills on a map"
+      "desc": "Each line rises as a ridge on a map"
     },
     "banyan": {
       "name": "Banyan",
@@ -35,7 +37,7 @@
     },
     "delta": {
       "name": "River Delta",
-      "desc": "One river spreads into many channels"
+      "desc": "Each line is a channel to the sea"
     },
     "palm": {
       "name": "Date Palm Oasis",
@@ -43,11 +45,11 @@
     },
     "galaxy": {
       "name": "Family Galaxy",
-      "desc": "Each line is a spiral arm of stars"
+      "desc": "Each branch is a spiral arm of stars"
     },
     "river": {
       "name": "Time River",
-      "desc": "Each life is a ribbon in time"
+      "desc": "Each life is a stream through the years"
     },
     "hour": {
       "name": "Hourglass",
@@ -55,22 +57,81 @@
     },
     "city": {
       "name": "Heritage City",
-      "desc": "Each line is a tower"
+      "desc": "Each line is a house with its wind tower"
     },
     "mandala": {
       "name": "Girih Mandala",
-      "desc": "Generations as star tiles"
+      "desc": "Generations inlaid in a marble medallion"
     },
     "sky": {
       "name": "Constellation",
-      "desc": "Generations as orbits"
+      "desc": "Branches as constellations on a chart"
     },
     "glass": {
       "name": "Glass Strata",
-      "desc": "Generations as plates"
+      "desc": "Generations as glass floors"
     }
   },
   "hourBack": "Click again to centre the founder",
+  "rail": {
+    "title": "Scenes",
+    "collapse": "Hide the scene list",
+    "expand": "{{name}}: show all scenes"
+  },
+  "camera": {
+    "label": "Camera",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoom": "Zoom",
+    "zoomValue": "{{value}}%",
+    "fitAll": "Fit the whole family",
+    "frame": "Frame the selected branch",
+    "frameNone": "Select someone to frame their branch",
+    "view": "View options",
+    "angle": "Camera angle",
+    "views": {
+      "default": "Default",
+      "top": "From above",
+      "front": "From the front",
+      "side": "From the side"
+    },
+    "names": "Names",
+    "labels": {
+      "all": "Everyone",
+      "branch": "Selected branch only",
+      "off": "Hidden"
+    },
+    "withKey": "{{label}} ({{key}})"
+  },
+  "help": {
+    "open": "Controls and shortcuts",
+    "mouse": "Mouse",
+    "touch": "Touch",
+    "keyboard": "Keyboard",
+    "drag": "Drag",
+    "rightDrag": "Right-drag",
+    "scroll": "Scroll",
+    "clickPortrait": "Click a portrait",
+    "clickEmpty": "Click empty space",
+    "oneFinger": "Drag with one finger",
+    "pinch": "Pinch or spread",
+    "twoFingers": "Drag with two fingers",
+    "tapPortrait": "Tap a portrait",
+    "turn": "Turn the view",
+    "slide": "Slide the view",
+    "zoom": "Zoom in and out",
+    "select": "Select that person",
+    "clear": "Clear the selection",
+    "fitAll": "Fit the whole family",
+    "frame": "Frame the selected branch",
+    "views": "Camera angle: default, above, front, side",
+    "help": "Show or hide this help",
+    "esc": "Esc"
+  },
+  "theme": {
+    "light": "Switch to the light theme",
+    "dark": "Switch to the dark theme"
+  },
   "timeline": "Timeline",
   "play": "Play the years",
   "pause": "Pause",
@@ -78,17 +139,18 @@
   "follow": "Camera follows new births while playing",
   "spin": "Auto-rotate",
   "pan": "Move mode: drag to slide the view. Off: drag turns it and right-drag slides it.",
-  "fit": "Overview",
   "fullscreen": "Full screen",
   "exitFullscreen": "Exit full screen",
-  "births": "Births per year",
-  "deaths": "Deaths per year",
+  "births": "Births",
+  "deaths": "Deaths",
   "alive": "{{count}} alive in {{year}}",
   "hud": {
-    "fps": "fps",
+    "details": "Details",
+    "fps": "Frame rate",
+    "fpsValue": "{{n}} fps",
     "quality": "Quality",
-    "people": "people",
-    "draws": "draw calls",
+    "people": "People",
+    "draws": "Draw calls",
     "q0": "Low",
     "q1": "Medium",
     "q2": "High"

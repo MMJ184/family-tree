@@ -1,4 +1,5 @@
 import {
+  BufferAttribute,
   BufferGeometry,
   CatmullRomCurve3,
   Float32BufferAttribute,
@@ -9,83 +10,42 @@ import {
   LatheGeometry,
   Matrix4,
   Mesh,
+  Points,
   Quaternion,
   RingGeometry,
-  ShaderMaterial,
+  SphereGeometry,
   Vector2,
   Vector3,
 } from 'three';
-import { bake, barkMaterial, builder, makeFog, NOISE, skyDome, tube } from '../gl.ts';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { softTex } from '../gl.ts';
 import { spouseYear } from '../model.ts';
 import { lin, rng } from '../palette.ts';
 import { bonsaiLayout } from './bonsai-layout.ts';
+import {
+  domeMaterial,
+  dustMaterial,
+  glazeMaterial,
+  juniperMaterial,
+  LOOK,
+  mossMaterial,
+  padMaterial,
+  plinthMaterial,
+  setStudio,
+  stoneMaterial,
+  studioRig,
+  sweepMaterial,
+} from './bonsai-mat.ts';
+import { bakeWood, fitView, trackPointScale, tube, untone, woodBuilder } from './tree-gl.ts';
 import { isRoot, type SceneBuilder } from './types.ts';
 
-// Bonsai: the family as a small moyogi (informal upright) tree in a glazed pot, lit like a
-// studio product shot. The founder sits where the trunk opens into the crown, each line of
-// descent is a wired branch, and the youngest generations sit on the outer foliage pads.
-
-/** Studio colours for this scene (sRGB hex), per theme. */
-const LOOK = {
-  light: {
-    wallTop: '#d9d6d0',
-    wallLow: '#f3f1ec',
-    floor: '#efece6',
-    pool: '#fbfaf7',
-    shadow: '#a39c90',
-    glazeA: '#1d3b52',
-    glazeB: '#3f6f8a',
-    leafLow: '#2f5a37',
-    leafTop: '#86ad5f',
-    dead: '#b9b2a2',
-    moss: '#62803a',
-    soil: '#5a4a38',
-    stone: '#6e6a63',
-    key: '#fffaf0',
-    bloom: 0.06,
-    exposure: 0.98,
-  },
-  dark: {
-    wallTop: '#07080a',
-    wallLow: '#1a1c20',
-    floor: '#16181b',
-    pool: '#2c2f34',
-    shadow: '#040506',
-    glazeA: '#1d3542',
-    glazeB: '#4d7f8c',
-    leafLow: '#1e4029',
-    leafTop: '#79a65a',
-    dead: '#8e877a',
-    moss: '#45612a',
-    soil: '#3a2f24',
-    stone: '#6f6c67',
-    key: '#fff3dc',
-    bloom: 0.2,
-    exposure: 1.02,
-  },
-};
-type Look = typeof LOOK.light;
-
-// Shared studio lighting: a large key softbox (upper left, front), a cool fill and a rim from behind.
-const LIGHTS = /* glsl */ `
-  uniform vec3 uKey;
-  vec3 studio(vec3 base, vec3 n, vec3 V, float gloss, float wrap) {
-    vec3 L1 = normalize(vec3(-.55, .8, .6)), L2 = normalize(vec3(.8, .25, .45)), L3 = normalize(vec3(.2, .5, -1.));
-    float k = clamp((dot(n, L1) + wrap) / (1. + wrap), 0., 1.);
-    float f = max(dot(n, L2), 0.);
-    float rim = pow(1. - max(dot(n, V), 0.), 3.) * max(dot(n, L3) + .4, 0.);
-    float sky = n.y * .5 + .5;
-    vec3 c = base * (.2 + .22 * sky + uKey * k * .95 + vec3(.72, .8, .9) * f * .22) + uKey * rim * .35;
-    vec3 R = reflect(-V, n);
-    float soft = smoothstep(.86, .97, dot(R, L1));
-    c += uKey * (soft * .55 + pow(max(dot(R, L2), 0.), 40.) * .18) * gloss;
-    return c;
-  }`;
+// Bonsai: the family as a juniper in an informal upright (moyogi) style, shown like a gallery
+// piece. The founder sits where the trunk opens into the crown, each line of descent is a wired
+// branch, and the youngest generations sit on the outer foliage pads. Night: black lacquer stage,
+// oxblood glaze, dust in the key light. Day: white gallery plinth, celadon glaze, soft shadows.
 
 export const bonsaiScene: SceneBuilder = (ctx) => {
   const { M, U, big } = ctx;
-  const look = (): Look => (ctx.dark() ? LOOK.dark : LOOK.light);
-  const L0 = look();
   const group = new Group();
   const pos = new Float32Array(M.n * 3);
   const m = ctx.rtl() ? -1 : 1;
@@ -97,16 +57,12 @@ export const bonsaiScene: SceneBuilder = (ctx) => {
   const { R, Cy, Cz } = L;
   const C = new Vector3(0, Cy, Cz);
   const at = (i: number) => new Vector3((L.X[i] ?? 0) * m, L.Y[i] ?? 0, L.Z[i] ?? 0);
-  for (let i = 0; i < M.n; i++) {
-    const v = at(i);
-    pos[i * 3] = v.x;
-    pos[i * 3 + 1] = v.y;
-    pos[i * 3 + 2] = v.z;
-  }
+  for (let i = 0; i < M.n; i++) pos.set(at(i).toArray(), i * 3);
   const atId = (id: string) => at(M.get(id).idx);
+  const Rg = studioRig();
 
-  // Trunk: an S-curved spine from the soil to the founder, with a short leader into the crown
-  const B = builder();
+  // ---- wood: an S-curved trunk with a shari vein, surface roots, jin stubs and wired branches ----
+  const W = woodBuilder();
   let cx0 = 0;
   let cx1 = 0;
   for (const pad of L.pads) {
@@ -129,13 +85,19 @@ export const bonsaiScene: SceneBuilder = (ctx) => {
     'centripetal',
   );
   const root = M.root;
-  tube(B, spine, rT, rT * 0.22, big ? 40 : 56, big ? 12 : 16, root.born - 1, root.id, 2.6);
-  // Nebari: surface roots flaring into the moss
-  for (let k = 0; k < 6; k++) {
-    const a = (k / 6) * Math.PI * 2 + 0.4 + rnd() * 0.4;
-    const len = potW * (0.4 + rnd() * 0.25);
+  tube(W, spine, rT, rT * 0.22, big ? 40 : 64, big ? 12 : 18, {
+    birth: root.born - 1,
+    grow: 2.6,
+    key: root.id,
+    kind: 3,
+    shape: (t) => 1 + 0.35 * Math.exp(-t * 10) + 0.06 * Math.sin(t * 23),
+  });
+  for (let k = 0; k < 7; k++) {
+    // Nebari: surface roots flaring into the moss.
+    const a = (k / 7) * Math.PI * 2 + 0.4 + rnd() * 0.4;
+    const len = potW * (0.4 + rnd() * 0.28);
     tube(
-      B,
+      W,
       new CatmullRomCurve3([
         new Vector3(0, rT * 0.9, 0),
         new Vector3(Math.cos(a) * len * 0.4, 0.05, Math.sin(a) * len * 0.3),
@@ -145,10 +107,27 @@ export const bonsaiScene: SceneBuilder = (ctx) => {
       0.05,
       10,
       8,
-      root.born - 2,
-      '',
-      2.4,
+      { birth: root.born - 2, grow: 2.4, key: '', kind: 2 },
     );
+  }
+  // Jin: bleached dead stubs on the trunk, the mark of an old juniper.
+  for (const [t0, side, len] of [
+    [0.58, 1, 0.55],
+    [0.78, -1, 0.42],
+    [0.93, 1, 0.3],
+  ] as const) {
+    const P = spine.getPointAt(t0);
+    const dir = new Vector3(side * m * 0.8, 0.55 + rnd() * 0.3, (rnd() - 0.4) * 0.6).normalize();
+    const E = P.clone().addScaledVector(dir, potW * len);
+    const mid = P.clone()
+      .lerp(E, 0.5)
+      .add(new Vector3((rnd() - 0.5) * 0.3, 0.12, (rnd() - 0.5) * 0.3).multiplyScalar(potW * 0.3));
+    tube(W, new CatmullRomCurve3([P, mid, E]), rT * 0.32, 0.015, 8, 6, {
+      birth: root.born + 6,
+      grow: 2,
+      key: '',
+      kind: 5,
+    });
   }
   const sp = spine.getSpacedPoints(80);
   const startFor = (child: Vector3) => {
@@ -197,26 +176,19 @@ export const bonsaiScene: SceneBuilder = (ctx) => {
           false,
           'centripetal',
         );
-    tube(
-      B,
-      curve,
-      rad(par.leaves) * 0.85,
-      rad(p.leaves) * 0.7,
-      short ? 5 : big ? 10 : 16,
-      big ? 5 : 7,
-      p.born,
-      p.id,
-      short ? 1 : 1.6,
-    );
+    tube(W, curve, rad(par.leaves) * 0.85, rad(p.leaves) * 0.7, short ? 5 : big ? 10 : 16, big ? 5 : 7, {
+      birth: p.born,
+      grow: short ? 1 : 1.6,
+      key: p.id,
+    });
   }
   for (const p of M.people) {
-    // short twig to a spouse who married in
+    // Marriage twig, gold: from the partner across to the spouse.
     if (!p.mi || !p.anchor) continue;
     const a = atId(p.anchor);
     const c = atId(p.id);
-    const s = M.get(p.anchor).spouses.find((x) => x.id === p.id);
     tube(
-      B,
+      W,
       new CatmullRomCurve3([
         a,
         a
@@ -225,63 +197,30 @@ export const bonsaiScene: SceneBuilder = (ctx) => {
           .addScaledVector(down, S * 0.2),
         c,
       ]),
-      rad(1) * 0.5,
-      rad(1) * 0.4,
+      rad(1) * 0.42,
+      rad(1) * 0.34,
+      6,
       5,
-      5,
-      s ? s.year : p.born,
-      p.id,
-      1,
+      { birth: spouseYear(M, p), grow: 1, key: p.id, kind: 1 },
     );
   }
-  const fog = makeFog();
-  const barkGeo = bake(B);
-  const bark = barkMaterial(U, fog);
+  const barkGeo = bakeWood(W);
+  const bark = juniperMaterial(U, Rg);
+  bark.uni.uThick.value.set(rT * 0.35, rT * 0.8);
   group.add(new Mesh(barkGeo, bark.mat));
 
-  // Foliage pads: faceted clouds behind every slot of every pad; one instanced mesh
+  // ---- foliage pads: lumpy clouds behind every slot of every pad; one instanced mesh ----
   const perCell = big ? 1 : 2;
   const puffH = big ? 0.78 : 0.62;
   let count = 0;
   for (const pad of L.pads) count += pad.cells.length * perCell;
-  const puffGeo = new IcosahedronGeometry(1, 1);
+  const puffGeo = new IcosahedronGeometry(1, 2);
   const pb = new Float32Array(count);
   const pd = new Float32Array(count);
   const ps = new Float32Array(count);
-  const ph = new Float32Array(count);
   const keys: string[] = [];
-  const puffUni = {
-    ...U,
-    uLow: { value: lin(L0.leafLow) },
-    uTop: { value: lin(L0.leafTop) },
-    uDead: { value: lin(L0.dead) },
-    uKey: { value: lin(L0.key) },
-    uFocus: { value: 0 },
-  };
-  const puffMat = new ShaderMaterial({
-    uniforms: puffUni,
-    vertexShader: /* glsl */ `attribute float aBirth, aDeath, aSeed, aHi; uniform float uYear, uEnter, uMinYear, uTime;
-      varying vec3 vW; varying float vSeed, vDead, vHi, vLocalY;
-      void main() { float yr = mix(uMinYear - 3., uYear, uEnter);
-        float grow = smoothstep(aBirth + .3, aBirth + 2.2, yr);
-        vec3 p = position * grow; vLocalY = position.y;
-        vec4 w = modelMatrix * instanceMatrix * vec4(p, 1.);
-        w.x += sin(uTime * .7 + aSeed * 40.) * .03 * grow; w.y += cos(uTime * .55 + aSeed * 31.) * .02 * grow;
-        vW = w.xyz; vSeed = aSeed; vDead = smoothstep(aDeath + .5, aDeath + 2.5, yr); vHi = aHi;
-        gl_Position = projectionMatrix * viewMatrix * w; }`,
-    fragmentShader: /* glsl */ `uniform vec3 uLow, uTop, uDead; uniform float uFocus;
-      varying vec3 vW; varying float vSeed, vDead, vHi, vLocalY;
-      ${LIGHTS}
-      void main() { vec3 n = normalize(cross(dFdx(vW), dFdy(vW))); vec3 V = normalize(cameraPosition - vW);
-        if (dot(n, V) < 0.) n = -n;
-        float t = clamp(vLocalY * .5 + .5, 0., 1.) * .6 + n.y * .4;
-        vec3 base = mix(uLow, uTop, clamp(t + (vSeed - .5) * .3, 0., 1.));
-        base = mix(base, uDead, vDead * .6);
-        vec3 c = studio(base, n, V, .06, .3);
-        c = mix(c, c * .32, uFocus * (1. - step(.5, vHi)));
-        gl_FragColor = vec4(c, 1.); }`,
-  });
-  const puffs = new InstancedMesh(puffGeo, puffMat, Math.max(1, count));
+  const pads = padMaterial(U, Rg);
+  const puffs = new InstancedMesh(puffGeo, pads.mat, Math.max(1, count));
   const mtx = new Matrix4();
   const q = new Quaternion();
   const sc = new Vector3();
@@ -315,13 +254,13 @@ export const bonsaiScene: SceneBuilder = (ctx) => {
   puffGeo.setAttribute('aBirth', new InstancedBufferAttribute(pb, 1));
   puffGeo.setAttribute('aDeath', new InstancedBufferAttribute(pd, 1));
   puffGeo.setAttribute('aSeed', new InstancedBufferAttribute(ps, 1));
-  puffGeo.setAttribute('aHi', new InstancedBufferAttribute(ph, 1));
+  puffGeo.setAttribute('aHi', new InstancedBufferAttribute(new Float32Array(count), 1));
   puffGeo.userData.keys = keys;
   puffs.count = count;
   puffs.frustumCulled = false;
   group.add(puffs);
 
-  // Shallow oval pot with a glossy glaze
+  // ---- shallow oval pot with a glossy glaze ----
   const PX = potW;
   const PZ = 0.64 * potW;
   const PH = 0.27 * potW;
@@ -339,33 +278,18 @@ export const bonsaiScene: SceneBuilder = (ctx) => {
     [0.93, 0.86],
     [0.0, 0.86],
   ].map(([r, y]) => new Vector2(r ?? 0, y ?? 0));
-  const potGeo = new LatheGeometry(prof, 72);
+  const potGeo = new LatheGeometry(prof, 96);
   potGeo.scale(PX, PH, PZ);
   potGeo.translate(0, potTop - PH, 0);
   potGeo.computeVertexNormals();
-  const glazeUni = { uA: { value: lin(L0.glazeA) }, uB: { value: lin(L0.glazeB) }, uKey: { value: lin(L0.key) } };
-  const potMat = new ShaderMaterial({
-    uniforms: glazeUni,
-    vertexShader: /* glsl */ `varying vec3 vN, vW; varying float vY; void main() { vN = normalize(mat3(modelMatrix) * normal); vec4 w = modelMatrix * vec4(position, 1.); vW = w.xyz; vY = position.y;
-      gl_Position = projectionMatrix * viewMatrix * w; }`,
-    fragmentShader: /* glsl */ `uniform vec3 uA, uB; varying vec3 vN, vW; varying float vY;
-      ${NOISE}
-      ${LIGHTS}
-      void main() { vec3 n = normalize(vN); vec3 V = normalize(cameraPosition - vW);
-        float drip = noise(vec2(atan(vW.z, vW.x) * 14., vY * 2.)) * .6 + noise(vW.xz * 1.7) * .4;
-        vec3 base = mix(uA, uB, drip * .18 + smoothstep(.5, 1., n.y) * .2);
-        vec3 c = studio(base, n, V, 1.1, .1);
-        float fr = pow(1. - max(dot(n, V), 0.), 4.); c += uKey * fr * .12;
-        gl_FragColor = vec4(c, 1.); }`,
-  });
-  const pot = new Mesh(potGeo, potMat);
-  group.add(pot);
-  // Moss over the soil, and a small stone
+  const glaze = glazeMaterial(Rg);
+  glaze.uni.uSize.value.set(PX, potTop - PH, PH);
+  group.add(new Mesh(potGeo, glaze.mat));
+  // Moss over the soil with gravel at the rim, and two small stones.
   const soilY = potTop - PH * 0.14;
-  const mossGeo = new RingGeometry(0, 1, 64, 8);
+  const mossGeo = new RingGeometry(0, 1, 72, 10);
   mossGeo.rotateX(-Math.PI / 2);
   {
-    // a low mound of moss, slightly above the pot's inner floor
     const mp = mossGeo.getAttribute('position');
     for (let i = 0; i < mp.count; i++) {
       const r2 = mp.getX(i) ** 2 + mp.getZ(i) ** 2;
@@ -374,34 +298,11 @@ export const bonsaiScene: SceneBuilder = (ctx) => {
   }
   mossGeo.scale(PX * 0.94, 1, PZ * 0.92);
   mossGeo.translate(0, soilY, 0);
-  const mossUni = { uMoss: { value: lin(L0.moss) }, uSoil: { value: lin(L0.soil) }, uKey: { value: lin(L0.key) } };
-  const moss = new Mesh(
-    mossGeo,
-    new ShaderMaterial({
-      uniforms: mossUni,
-      vertexShader: /* glsl */ `varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
-      fragmentShader: /* glsl */ `uniform vec3 uMoss, uSoil; varying vec3 vW;
-        ${NOISE}
-        ${LIGHTS}
-        void main() { float a = noise(vW.xz * 1.6) * .55 + noise(vW.xz * 5.) * .3 + noise(vW.xz * 14.) * .15;
-          vec3 base = mix(uSoil, uMoss, smoothstep(.12, .32, a)) * (.85 + .22 * noise(vW.xz * 9.));
-          vec3 n = normalize(vec3((noise(vW.xz * 5. + 3.) - .5) * .6, 1., (noise(vW.xz * 5. - 7.) - .5) * .6));
-          gl_FragColor = vec4(studio(base, n, normalize(cameraPosition - vW), 0., .4), 1.); }`,
-    }),
-  );
-  group.add(moss);
-  const stoneUni = { uC: { value: lin(L0.stone) }, uKey: { value: lin(L0.key) } };
-  const stoneMat = new ShaderMaterial({
-    uniforms: stoneUni,
-    vertexShader: /* glsl */ `varying vec3 vW; void main() { vec4 w = modelMatrix * instanceMatrix * vec4(position, 1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
-    fragmentShader: /* glsl */ `uniform vec3 uC; varying vec3 vW;
-      ${NOISE}
-      ${LIGHTS}
-      void main() { vec3 n = normalize(cross(dFdx(vW), dFdy(vW))); vec3 V = normalize(cameraPosition - vW); if (dot(n, V) < 0.) n = -n;
-        vec3 base = uC * (.85 + .3 * noise(vW.xy * 3.));
-        gl_FragColor = vec4(studio(base, n, V, .15, .2), 1.); }`,
-  });
-  const stones = new InstancedMesh(new IcosahedronGeometry(1, 1), stoneMat, 2);
+  const moss = mossMaterial(Rg);
+  moss.uni.uRad.value.set(PX * 0.94, PZ * 0.92, 0);
+  group.add(new Mesh(mossGeo, moss.mat));
+  const stone = stoneMaterial(Rg);
+  const stones = new InstancedMesh(new IcosahedronGeometry(1, 2), stone.mat, 2);
   mtx.compose(
     new Vector3(-0.42 * PX * m, soilY + 0.03 * potW, 0.25 * PZ),
     new Quaternion().setFromAxisAngle(yAxis, 0.6),
@@ -416,25 +317,32 @@ export const bonsaiScene: SceneBuilder = (ctx) => {
   stones.setMatrixAt(1, mtx);
   group.add(stones);
 
-  // Seamless sweep: floor curving up into a back wall, with a light pool and a contact shadow
-  const floorY = potTop - PH - 0.06 * potW;
-  const back = -1.5 * R;
+  // ---- plinth (lacquer by night, gallery white by day) on a seamless sweep ----
+  const floorY = potTop - PH;
+  const plW = PX * 2.7;
+  const plD = PZ * 2.7;
+  const plH = R * 2.2;
+  const plinthGeo = new RoundedBoxGeometry(plW, plH, plD, 4, Math.min(plW, plD) * 0.025);
+  plinthGeo.translate(0, floorY - plH / 2, 0);
+  const plinth = plinthMaterial(Rg);
+  plinth.uni.uPot.value.set(PX * 1.02, PZ * 1.02, floorY);
+  group.add(new Mesh(plinthGeo, plinth.mat));
+  const baseY = floorY - plH;
+  const back = -1.6 * R;
   const bend = 2.2 * R;
-  const prof2: Array<[number, number, number]> = [];
-  for (let j = 0; j <= 10; j++) prof2.push([floorY, 600 - (j / 10) * (600 - back), 0]);
+  const prof2: Array<[number, number]> = [];
+  for (let j = 0; j <= 10; j++) prof2.push([baseY, 600 - (j / 10) * (600 - back)]);
   for (let j = 1; j <= 24; j++) {
     const a = (j / 24) * (Math.PI / 2);
-    prof2.push([floorY + bend * (1 - Math.cos(a)), back - bend * Math.sin(a), 0.5 * (j / 24)]);
+    prof2.push([baseY + bend * (1 - Math.cos(a)), back - bend * Math.sin(a)]);
   }
-  for (let j = 1; j <= 8; j++) prof2.push([floorY + bend + (j / 8) * 900, back - bend, 0.5 + 0.5 * (j / 8)]);
+  for (let j = 1; j <= 8; j++) prof2.push([baseY + bend + (j / 8) * 1400, back - bend]);
   const sv: number[] = [];
-  const sf: number[] = [];
   const si: number[] = [];
   const cols = 24;
-  prof2.forEach(([y, z, f], j) => {
+  prof2.forEach(([y, z], j) => {
     for (let c = 0; c <= cols; c++) {
-      sv.push((c / cols - 0.5) * 1600, y, z);
-      sf.push(f);
+      sv.push((c / cols - 0.5) * 2000, y, z);
       if (j > 0 && c < cols) {
         const a = (j - 1) * (cols + 1) + c;
         const b = j * (cols + 1) + c;
@@ -444,96 +352,78 @@ export const bonsaiScene: SceneBuilder = (ctx) => {
   });
   const sweepGeo = new BufferGeometry();
   sweepGeo.setAttribute('position', new Float32BufferAttribute(sv, 3));
-  sweepGeo.setAttribute('aF', new Float32BufferAttribute(sf, 1));
   sweepGeo.setIndex(si);
-  const sweepUni = {
-    uTop: { value: lin(L0.wallTop) },
-    uLow: { value: lin(L0.wallLow) },
-    uFloor: { value: lin(L0.floor) },
-    uPool: { value: lin(L0.pool) },
-    uShadow: { value: lin(L0.shadow) },
-    uPot: { value: new Vector3(PX, PZ, R) },
-    uFloorY: { value: floorY },
-  };
-  const sweep = new Mesh(
-    sweepGeo,
-    new ShaderMaterial({
-      uniforms: sweepUni,
-      vertexShader: /* glsl */ `attribute float aF; varying float vF; varying vec3 vW; void main() { vF = aF; vec4 w = modelMatrix * vec4(position, 1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
-      fragmentShader: /* glsl */ `uniform vec3 uTop, uLow, uFloor, uPool, uShadow, uPot; uniform float uFloorY; varying float vF; varying vec3 vW;
-        float h(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-        void main() { float R = uPot.z;
-          float pool = 1. - smoothstep(0., 3.4 * R, length(vec2(vW.x * .7, vW.z + .3 * R)));
-          vec3 floorC = mix(uFloor, uPool, pool);
-          float wallH = clamp((vW.y - uFloorY) / (5. * R), 0., 1.);
-          vec3 wallC = mix(mix(uLow, uPool, (1. - smoothstep(0., 2.6 * R, abs(vW.x))) * .5), uTop, smoothstep(.0, 1., wallH));
-          vec3 c = mix(floorC, wallC, smoothstep(.0, .6, vF));
-          float onFloor = 1. - smoothstep(.0, .25, vF);
-          float contact = 1. - smoothstep(.8, 1.7, length(vec2(vW.x / uPot.x, vW.z / uPot.y)));
-          float drop = 1. - smoothstep(.2, 1., length(vec2((vW.x - .45 * R) / (1.7 * R), (vW.z + .7 * R) / (1.0 * R))));
-          c = mix(c, uShadow, onFloor * (contact * .8 + drop * .22));
-          c *= 1. - smoothstep(4. * R, 14. * R, length(vW.xz)) * .35;
-          c += (h(gl_FragCoord.xy) - .5) / 255.;
-          gl_FragColor = vec4(c, 1.); }`,
-    }),
+  const sweep = sweepMaterial();
+  sweep.uni.uCentre.value.set(0, Cy * 0.75, back - bend);
+  sweep.uni.uSpan.value = R * 4.2;
+  group.add(new Mesh(sweepGeo, sweep.mat));
+  const dome = domeMaterial();
+  const domeMesh = new Mesh(new SphereGeometry(2600, 16, 8), dome.mat);
+  domeMesh.renderOrder = -2;
+  group.add(domeMesh);
+
+  // ---- night: dust motes drifting through the key light above the crown ----
+  const dN = big ? 70 : 50;
+  const dp = new Float32Array(dN * 3);
+  const dph = new Float32Array(dN);
+  for (let i = 0; i < dN; i++) {
+    dp.set([(rnd() - 0.5) * R * 3, Cy + (rnd() - 0.3) * R * 1.4, Cz + (rnd() - 0.5) * R * 1.6], i * 3);
+    dph[i] = rnd() * 40;
+  }
+  const dg = new BufferGeometry();
+  dg.setAttribute('position', new BufferAttribute(dp, 3));
+  dg.setAttribute('aPh', new BufferAttribute(dph, 1));
+  const dust = dustMaterial(
+    U,
+    softTex([
+      [0, 'rgba(255,255,255,1)'],
+      [0.3, 'rgba(255,255,255,0.5)'],
+      [1, 'rgba(255,255,255,0)'],
+    ]),
   );
-  group.add(sweep);
-  const sky = skyDome(L0.wallTop, L0.wallLow, L0.floor);
-  sky.mesh.renderOrder = -2;
-  group.add(sky.mesh);
+  const motes = new Points(dg, dust.mat);
+  trackPointScale(motes, dust.uni.uPx);
+  motes.frustumCulled = false;
+  group.add(motes);
 
   const tint = () => {
-    const lk = look();
-    const q2 = ctx.pal();
-    bark.uni.uBarkA.value.copy(lin(q2.barkA));
-    bark.uni.uBarkB.value.copy(lin(q2.barkB));
-    bark.uni.uGlow.value.copy(lin(q2.glow));
-    bark.uni.uSky.value.copy(lin(lk.key));
-    bark.uni.uGround.value.copy(lin(lk.soil));
-    fog.uFogNear.value = 4000;
-    fog.uFogFar.value = 5000;
-    fog.uFogColor.value.copy(lin(lk.wallLow));
-    puffUni.uLow.value.copy(lin(lk.leafLow));
-    puffUni.uTop.value.copy(lin(lk.leafTop));
-    puffUni.uDead.value.copy(lin(lk.dead));
-    for (const u of [puffUni, glazeUni, mossUni, stoneUni]) u.uKey.value.copy(lin(lk.key));
-    glazeUni.uA.value.copy(lin(lk.glazeA));
-    glazeUni.uB.value.copy(lin(lk.glazeB));
-    mossUni.uMoss.value.copy(lin(lk.moss));
-    mossUni.uSoil.value.copy(lin(lk.soil));
-    stoneUni.uC.value.copy(lin(lk.stone));
-    sweepUni.uTop.value.copy(lin(lk.wallTop));
-    sweepUni.uLow.value.copy(lin(lk.wallLow));
-    sweepUni.uFloor.value.copy(lin(lk.floor));
-    sweepUni.uPool.value.copy(lin(lk.pool));
-    sweepUni.uShadow.value.copy(lin(lk.shadow));
-    sky.set(lk.wallTop, lk.wallLow, lk.floor);
+    const lk = ctx.dark() ? LOOK.dark : LOOK.light;
+    const flat = (hex: string) => untone(hex, lk.exposure);
+    setStudio(Rg, lk, lin, flat);
+    bark.uni.uBarkA.value.copy(lin(lk.barkA));
+    bark.uni.uBarkB.value.copy(lin(lk.barkB));
+    bark.uni.uShari.value.copy(lin(lk.shari));
+    pads.uni.uLow.value.copy(lin(lk.leafA));
+    pads.uni.uTop.value.copy(lin(lk.leafB));
+    pads.uni.uDead.value.copy(lin(lk.dead));
+    glaze.uni.uA.value.copy(lin(lk.glazeA));
+    glaze.uni.uB.value.copy(lin(lk.glazeB));
+    glaze.uni.uClay.value.copy(lin(lk.clay));
+    glaze.uni.uCrackle.value = lk.crackle;
+    moss.uni.uMoss.value.copy(lin(lk.moss));
+    moss.uni.uSoil.value.copy(lin(lk.soil));
+    moss.uni.uGravel.value.copy(lin(lk.gravel));
+    stone.uni.uC.value.copy(lin(lk.stone));
+    plinth.uni.uBody.value.copy(lin(lk.stand));
+    plinth.uni.uEdge.value.copy(lin(lk.standEdge));
+    plinth.uni.uGloss.value = lk.dark ? 1 : 0;
+    plinth.uni.uShade.value.copy(lk.dark ? lin('#000000') : lin('#9d9d9d'));
+    sweep.uni.uIn.value.copy(flat(lk.wallIn));
+    sweep.uni.uOut.value.copy(flat(lk.wallOut));
+    dome.uni.uC.value.copy(flat(lk.wallOut));
+    dust.uni.uCol.value.copy(lin(lk.dust));
+    motes.visible = lk.dark;
     ctx.look(lk.bloom, lk.exposure);
   };
   tint();
 
-  // Default camera: the whole tree and pot in frame, slightly from above and to the key-light side
-  let x0 = -PX;
-  let x1 = PX;
-  let y1 = Cy;
-  for (let i = 0; i < M.n; i++) {
-    x0 = Math.min(x0, (pos[i * 3] ?? 0) - disc);
-    x1 = Math.max(x1, (pos[i * 3] ?? 0) + disc);
-    y1 = Math.max(y1, (pos[i * 3 + 1] ?? 0) + disc);
-  }
-  for (const pad of L.pads)
-    for (const c of pad.cells) {
-      x0 = Math.min(x0, c.x * m - S);
-      x1 = Math.max(x1, c.x * m + S);
-    }
-  const yb = floorY;
-  const w = x1 - x0;
-  const h = y1 - yb + disc;
-  const t = Math.tan((42 / 2) * (Math.PI / 180));
-  // Turntable pivot on the tree's axis; framed a little narrower so the scene rail at the start side stays clear
-  const dist = Math.max(h / 2 / t, w / 2 / (t * 1.36 * 0.74)) * 1.08;
-  const target = new Vector3((x0 + x1) / 2, (yb + y1) / 2 + disc * 0.4, Cz);
+  // Default camera: the whole tree, the pot and the plinth's top edge, slightly from above and to the key-light side.
+  const frame: Vector3[] = [];
+  for (let i = 0; i < M.n; i++) frame.push(at(i));
+  for (const pad of L.pads) for (const c of pad.cells) frame.push(new Vector3(c.x * m, c.y, c.z));
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) frame.push(new Vector3(sx * PX, floorY - PH * 0.5, sz * PZ));
   const dir = new Vector3(-0.14 * m, 0.24, 1).normalize();
+  const view = fitView(frame, disc * 0.9, dir, 1.45, 0.86);
   return {
     key: 'bonsai',
     group,
@@ -543,8 +433,8 @@ export const bonsaiScene: SceneBuilder = (ctx) => {
     lift: 3,
     tint,
     hiTargets: [{ geo: barkGeo }, { geo: puffGeo, perPerson: true }],
-    focus: [bark.uni.uFocus, puffUni.uFocus],
-    view: { target, cam: target.clone().addScaledVector(dir, dist) },
+    focus: [Rg.uFocus],
+    view,
     follow: big ? 22 : 34,
     labelScale: 0.78,
   };

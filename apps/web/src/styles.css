@@ -66,22 +66,23 @@
   --topbar-height: 60px;
   --radius: 0.75rem;
 
-  /* Light: warm sand paper with deep teal and pearl gold. */
-  --ft-background: #f6f3ee;
-  --ft-foreground: #14201f;
+  /* Light: white and neutral greys. Teal is used only as the primary colour; gold marks marriages. */
+  --ft-background: #f6f6f6;
+  --ft-foreground: #0a0a0a;
   --ft-card: #ffffff;
-  --ft-card-foreground: #14201f;
+  --ft-card-foreground: #0a0a0a;
   --ft-popover: #ffffff;
-  --ft-popover-foreground: #14201f;
+  --ft-popover-foreground: #0a0a0a;
   --ft-primary: #0f6b63;
   --ft-primary-foreground: #ffffff;
-  --ft-secondary: #ece7df;
-  --ft-secondary-foreground: #14201f;
-  --ft-muted: #ece7df;
-  --ft-muted-foreground: #5d6664;
-  --ft-accent: #e8f2ef;
-  --ft-accent-foreground: #0b4f49;
-  --ft-gold: #b7862c;
+  --ft-secondary: #efefef;
+  --ft-secondary-foreground: #0a0a0a;
+  --ft-muted: #efefef;
+  --ft-muted-foreground: #666666;
+  --ft-accent: #ededed;
+  --ft-accent-foreground: #0a0a0a;
+  /* Darker than the 3D scenes' gold so small gold text passes 4.5:1 on white and on the page grey. */
+  --ft-gold: #8f6820;
   --ft-gold-foreground: #ffffff;
   --ft-destructive: oklch(0.51 0.237 25.3);
   --ft-destructive-text: oklch(0.51 0.237 25.3);
@@ -92,30 +93,30 @@
   --ft-warning-text: oklch(0.536 0.179 58.318);
   --ft-info: oklch(0.623 0.214 259.815);
   --ft-info-text: oklch(0.53 0.245 262.881);
-  --ft-border: rgba(20, 32, 31, 0.1);
-  --ft-input: #858c89;
+  --ft-border: rgba(0, 0, 0, 0.1);
+  --ft-input: #8a8a8a;
   --ft-ring: #0f6b63;
   --ft-male: #2f7fb8;
   --ft-female: #c2577e;
-  --ft-glass: rgba(255, 255, 255, 0.72);
-  --ft-canvas: radial-gradient(1200px 600px at 80% -10%, #e4efe9 0%, transparent 60%), #f6f3ee;
+  --ft-glass: rgba(255, 255, 255, 0.78);
+  --ft-canvas: radial-gradient(1200px 600px at 80% -10%, #ffffff 0%, transparent 60%), #f3f3f3;
 }
 
 :root[data-theme="dark"] {
-  --ft-background: #0b1214;
-  --ft-foreground: #eef3f1;
-  --ft-card: #131c1f;
-  --ft-card-foreground: #eef3f1;
-  --ft-popover: #1a2528;
-  --ft-popover-foreground: #eef3f1;
+  --ft-background: #000000;
+  --ft-foreground: #f5f5f5;
+  --ft-card: #0e0e0e;
+  --ft-card-foreground: #f5f5f5;
+  --ft-popover: #161616;
+  --ft-popover-foreground: #f5f5f5;
   --ft-primary: #4fd1bd;
-  --ft-primary-foreground: #06201c;
-  --ft-secondary: #1c282b;
-  --ft-secondary-foreground: #eef3f1;
-  --ft-muted: #1c282b;
-  --ft-muted-foreground: #9fb0ac;
-  --ft-accent: #17302d;
-  --ft-accent-foreground: #b9efe4;
+  --ft-primary-foreground: #000000;
+  --ft-secondary: #1a1a1a;
+  --ft-secondary-foreground: #f5f5f5;
+  --ft-muted: #1a1a1a;
+  --ft-muted-foreground: #a3a3a3;
+  --ft-accent: #1f1f1f;
+  --ft-accent-foreground: #f5f5f5;
   --ft-gold: #e2b65a;
   --ft-gold-foreground: #1c1405;
   --ft-destructive: oklch(0.51 0.237 25.3);
@@ -127,31 +128,31 @@
   --ft-warning-text: oklch(0.828 0.189 84.429);
   --ft-info: oklch(0.623 0.214 259.815);
   --ft-info-text: oklch(0.707 0.165 254.624);
-  --ft-border: rgba(255, 255, 255, 0.09);
-  --ft-input: #6f7c79;
+  --ft-border: rgba(255, 255, 255, 0.1);
+  --ft-input: #6b6b6b;
   --ft-ring: #4fd1bd;
   --ft-male: #6cb4ec;
   --ft-female: #f08bb0;
-  --ft-glass: rgba(19, 28, 31, 0.72);
-  --ft-canvas: radial-gradient(1200px 600px at 80% -10%, #12302c 0%, transparent 60%), #0b1214;
+  --ft-glass: rgba(14, 14, 14, 0.74);
+  --ft-canvas: radial-gradient(1200px 600px at 80% -10%, #161616 0%, transparent 60%), #000000;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ft-background: #0b1214;
-    --ft-foreground: #eef3f1;
-    --ft-card: #131c1f;
-    --ft-card-foreground: #eef3f1;
-    --ft-popover: #1a2528;
-    --ft-popover-foreground: #eef3f1;
+    --ft-background: #000000;
+    --ft-foreground: #f5f5f5;
+    --ft-card: #0e0e0e;
+    --ft-card-foreground: #f5f5f5;
+    --ft-popover: #161616;
+    --ft-popover-foreground: #f5f5f5;
     --ft-primary: #4fd1bd;
-    --ft-primary-foreground: #06201c;
-    --ft-secondary: #1c282b;
-    --ft-secondary-foreground: #eef3f1;
-    --ft-muted: #1c282b;
-    --ft-muted-foreground: #9fb0ac;
-    --ft-accent: #17302d;
-    --ft-accent-foreground: #b9efe4;
+    --ft-primary-foreground: #000000;
+    --ft-secondary: #1a1a1a;
+    --ft-secondary-foreground: #f5f5f5;
+    --ft-muted: #1a1a1a;
+    --ft-muted-foreground: #a3a3a3;
+    --ft-accent: #1f1f1f;
+    --ft-accent-foreground: #f5f5f5;
     --ft-gold: #e2b65a;
     --ft-gold-foreground: #1c1405;
     --ft-destructive: oklch(0.51 0.237 25.3);
@@ -163,13 +164,13 @@
     --ft-warning-text: oklch(0.828 0.189 84.429);
     --ft-info: oklch(0.623 0.214 259.815);
     --ft-info-text: oklch(0.707 0.165 254.624);
-    --ft-border: rgba(255, 255, 255, 0.09);
-    --ft-input: #6f7c79;
+    --ft-border: rgba(255, 255, 255, 0.1);
+    --ft-input: #6b6b6b;
     --ft-ring: #4fd1bd;
     --ft-male: #6cb4ec;
     --ft-female: #f08bb0;
-    --ft-glass: rgba(19, 28, 31, 0.72);
-    --ft-canvas: radial-gradient(1200px 600px at 80% -10%, #12302c 0%, transparent 60%), #0b1214;
+    --ft-glass: rgba(14, 14, 14, 0.74);
+    --ft-canvas: radial-gradient(1200px 600px at 80% -10%, #161616 0%, transparent 60%), #000000;
   }
 }
 

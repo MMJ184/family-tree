@@ -1,6 +1,6 @@
 import ForceGraph3D, { type ForceGraph3DInstance } from '3d-force-graph';
 // The app dedupes `three`, so this is the same copy 3d-force-graph renders with.
-import { CanvasTexture, type PerspectiveCamera, Sprite, SpriteMaterial, SRGBColorSpace } from 'three';
+import { CanvasTexture, MathUtils, type PerspectiveCamera, Sprite, SpriteMaterial, SRGBColorSpace } from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { setDragMode } from '#/lib/orbit.ts';
 import { applyForces, isHiLink } from './forces.ts';
@@ -15,6 +15,8 @@ import { type GraphHandle, isOn, panelShift, VIEW_BOTTOM, VIEW_TOP, type ViewCtl
 const PAD = 12;
 /** Extra room around a fitted branch. */
 const FIT_MARGIN = 1.1;
+/** Closest a branch fit may bring the camera (the distance `fly` keeps from one card). */
+const MIN_DIST = 420;
 
 interface Card {
   sprite: Sprite;
@@ -27,6 +29,10 @@ export function createGraph3D(el: HTMLElement, ctl: ViewCtl): GraphHandle {
   const cards = new Map<string, Card>();
   // Big families get lower-resolution textures to keep GPU memory in check.
   let res = 3;
+  /** The pointer is over the graph (see onEnter/onLeave). */
+  let inside = false;
+  /** The branch focus() last framed: its cards never fade for standing near the camera. */
+  let focused: ReadonlySet<string> = new Set();
 
   const freeCard = (c: Card) => {
     c.tex.dispose();
@@ -78,12 +84,36 @@ export function createGraph3D(el: HTMLElement, ctl: ViewCtl): GraphHandle {
     return sprite;
   };
 
+  /**
+   * Hover dimming, times a fade for cards far in front of the point the camera looks at, so a
+   * card that happens to sit just before the lens never veils the branch being looked at.
+   */
+  const opacity = (n: GNode) => {
+    const base = isOn(ctl, n.id) ? 1 : 0.15;
+    if (focused.has(n.id) || n.id === ctl.selectedId) return base;
+    const p = f.camera().position;
+    const t = (f.controls() as OrbitControls).target;
+    const dx = t.x - p.x;
+    const dy = t.y - p.y;
+    const dz = t.z - p.z;
+    const len2 = dx * dx + dy * dy + dz * dz || 1;
+    const ahead = (((n.x ?? 0) - p.x) * dx + ((n.y ?? 0) - p.y) * dy + ((n.z ?? 0) - p.z) * dz) / len2;
+    return base * MathUtils.smoothstep(ahead, 0.2, 0.55);
+  };
+
+  const fade = () => {
+    for (const n of f.graphData().nodes) {
+      const c = cards.get(n.id);
+      if (c) c.sprite.material.opacity = opacity(n);
+    }
+  };
+
   const restyle = () => {
     for (const n of f.graphData().nodes) {
       const c = cards.get(n.id);
       if (!c) continue;
       if (c.key !== lookKey(n)) paint(n, c);
-      c.sprite.material.opacity = isOn(ctl, n.id) ? 1 : 0.15;
+      c.sprite.material.opacity = opacity(n);
     }
     f.linkColor(f.linkColor()).linkWidth(f.linkWidth());
   };
@@ -106,8 +136,10 @@ export function createGraph3D(el: HTMLElement, ctl: ViewCtl): GraphHandle {
     .d3VelocityDecay(0.32)
     .onEngineStop(() => ctl.onSettled())
     .onNodeHover((n) => {
-      ctl.hoverId = n ? n.id : null;
-      el.style.cursor = n ? 'pointer' : '';
+      const id = inside && n ? n.id : null;
+      if (id === ctl.hoverId) return;
+      ctl.hoverId = id;
+      el.style.cursor = id ? 'pointer' : '';
       restyle();
     })
     .onNodeClick((n) => {
@@ -115,6 +147,23 @@ export function createGraph3D(el: HTMLElement, ctl: ViewCtl): GraphHandle {
       else fly(n);
     });
   applyForces(f);
+  // Hover counts only while the pointer is over the graph. The library keeps ray-testing its last
+  // pointer position (it starts just off the top-left corner) even after the pointer has left for
+  // a panel on top, which would hover some card there and dim all the others.
+  const onEnter = () => {
+    inside = true;
+  };
+  const onLeave = () => {
+    inside = false;
+    if (!ctl.hoverId) return;
+    ctl.hoverId = null;
+    el.style.cursor = '';
+    restyle();
+  };
+  el.addEventListener('pointerenter', onEnter);
+  el.addEventListener('pointerleave', onLeave);
+  const controls = f.controls() as OrbitControls;
+  controls.addEventListener('change', fade);
 
   const fly = (n: GNode) => {
     const x = n.x ?? 0;
@@ -145,50 +194,76 @@ export function createGraph3D(el: HTMLElement, ctl: ViewCtl): GraphHandle {
     refresh: restyle,
     focus(id, branch) {
       const nodes = f.graphData().nodes.filter((n) => branch.has(n.id) && n.x !== undefined);
-      if (nodes.length <= 1) {
+      if (!nodes.length) {
         const n = f.graphData().nodes.find((x) => x.id === id);
         if (n) fly(n);
         return;
       }
-      // Centre of the branch, and the radius of a sphere around its cards.
-      const c = { x: 0, y: 0, z: 0 };
-      for (const n of nodes) {
-        c.x += (n.x ?? 0) / nodes.length;
-        c.y += (n.y ?? 0) / nodes.length;
-        c.z += (n.z ?? 0) / nodes.length;
-      }
-      let r = 0;
-      for (const n of nodes)
-        r = Math.max(r, Math.hypot((n.x ?? 0) - c.x, (n.y ?? 0) - c.y, (n.z ?? 0) - c.z) + cardSize(n)[0] / 2);
-      // Back the camera off along its current direction until the sphere fits the free screen area.
+      // Work in the camera's own axes (right, up, back), which the flight keeps: each card is
+      // measured where it will be seen, so cards nearer the camera get the extra room they need.
       const cam = f.camera() as PerspectiveCamera;
-      const tanV = Math.tan((cam.fov * Math.PI) / 360);
+      const m = cam.matrixWorld.elements;
+      const R = [m[0] ?? 1, m[1] ?? 0, m[2] ?? 0] as const;
+      const U = [m[4] ?? 0, m[5] ?? 1, m[6] ?? 0] as const;
+      const B = [m[8] ?? 0, m[9] ?? 0, m[10] ?? 1] as const;
+      const pts = nodes.map((n) => {
+        const [cw, ch] = cardSize(n);
+        const x = n.x ?? 0;
+        const y = n.y ?? 0;
+        const z = n.z ?? 0;
+        return {
+          x: R[0] * x + R[1] * y + R[2] * z,
+          y: U[0] * x + U[1] * y + U[2] * z,
+          z: B[0] * x + B[1] * y + B[2] * z,
+          // Half the sprite's size (makeCard scales it by 1.1).
+          hw: ((cw + PAD) * 1.1) / 2,
+          hh: ((ch + PAD) * 1.1) / 2,
+        };
+      });
+      // The orbit target goes to the middle of the branch's depth.
+      let z0 = Number.POSITIVE_INFINITY;
+      let z1 = Number.NEGATIVE_INFINITY;
+      for (const p of pts) {
+        z0 = Math.min(z0, p.z);
+        z1 = Math.max(z1, p.z);
+      }
+      const cz = (z0 + z1) / 2;
+      // The free area (clear of the toolbars and the person panel) is off-centre on the screen, so each of its
+      // four edges gets its own tangent from the camera's axis (the projection stays centred).
       const w = f.width();
       const h = f.height();
-      const fitV = (h - VIEW_TOP - VIEW_BOTTOM) / h;
-      const fitH = (w - 2 * panelShift(w)) / w;
-      const dist = Math.max(r / (tanV * fitV), r / (tanV * cam.aspect * fitH)) * FIT_MARGIN;
-      const p = f.cameraPosition();
-      const dx = p.x - c.x;
-      const dy = p.y - c.y;
-      const dz = p.z - c.z;
-      const len = Math.hypot(dx, dy, dz) || 1;
-      // Slide camera and target sideways (away from the panel) and up (between the toolbars), in screen pixels.
-      const perPx = (2 * dist * tanV) / h;
-      const side = (ctl.lang === 'ar' ? -1 : 1) * panelShift(w) * perPx;
-      const lift = ((VIEW_TOP - VIEW_BOTTOM) / 2) * perPx;
-      const m = cam.matrixWorld.elements;
-      const off = {
-        x: (m[0] ?? 0) * side + (m[4] ?? 0) * lift,
-        y: (m[1] ?? 0) * side + (m[5] ?? 0) * lift,
-        z: (m[2] ?? 0) * side + (m[6] ?? 0) * lift,
-      };
-      const target = { x: c.x + off.x, y: c.y + off.y, z: c.z + off.z };
-      f.cameraPosition(
-        { x: target.x + (dx / len) * dist, y: target.y + (dy / len) * dist, z: target.z + (dz / len) * dist },
-        target,
-        900,
-      );
+      const fpx = h / 2 / Math.tan((cam.fov * Math.PI) / 360);
+      const panel = 2 * panelShift(w);
+      const rtl = ctl.lang === 'ar';
+      const tl = (w / 2 - (rtl ? panel : 0)) / fpx / FIT_MARGIN;
+      const tr = (w / 2 - (rtl ? 0 : panel)) / fpx / FIT_MARGIN;
+      const tu = (h / 2 - VIEW_TOP) / fpx / FIT_MARGIN;
+      const td = (h / 2 - VIEW_BOTTOM) / fpx / FIT_MARGIN;
+      // Each card edge must stay inside its side of the frustum: with the camera at (X, Y) across and Zc
+      // along B, a left edge needs X − tl·Zc ≤ x − hw − tl·z, a right edge X + tr·Zc ≥ x + hw + tr·z,
+      // and the same for bottom and top. The tightest pairs give the closest camera.
+      let lo = Number.POSITIVE_INFINITY;
+      let hi = Number.NEGATIVE_INFINITY;
+      let bot = Number.POSITIVE_INFINITY;
+      let top = Number.NEGATIVE_INFINITY;
+      for (const p of pts) {
+        lo = Math.min(lo, p.x - p.hw - tl * p.z);
+        hi = Math.max(hi, p.x + p.hw + tr * p.z);
+        bot = Math.min(bot, p.y - p.hh - td * p.z);
+        top = Math.max(top, p.y + p.hh + tu * p.z);
+      }
+      // Not so close that a stray card in front fills the screen (same distance as flying to one card).
+      const zc = Math.max((hi - lo) / (tl + tr), (top - bot) / (tu + td), cz + MIN_DIST);
+      // Any spare room is shared evenly on both sides.
+      const sx = (lo + tl * zc + (hi - tr * zc)) / 2;
+      const sy = (bot + td * zc + (top - tu * zc)) / 2;
+      const at = (b: number) => ({
+        x: R[0] * sx + U[0] * sy + B[0] * b,
+        y: R[1] * sx + U[1] * sy + B[1] * b,
+        z: R[2] * sx + U[2] * sy + B[2] * b,
+      });
+      focused = branch;
+      f.cameraPosition(at(zc), at(cz), 900);
     },
     fit(ms = 700) {
       f.zoomToFit(ms, 60);
@@ -200,6 +275,9 @@ export function createGraph3D(el: HTMLElement, ctl: ViewCtl): GraphHandle {
       f.width(w).height(h);
     },
     destroy() {
+      el.removeEventListener('pointerenter', onEnter);
+      el.removeEventListener('pointerleave', onLeave);
+      controls.removeEventListener('change', fade);
       const renderer = f.renderer();
       f._destructor();
       for (const c of cards.values()) freeCard(c);

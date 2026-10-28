@@ -1,6 +1,7 @@
 import type { StudioModel, StudioPerson } from '../model.ts';
 
-// Family Metro layout. The x axis is a timeline (birth year, before mirroring for Arabic).
+// Family Metro layout. The x axis is a timeline (birth year, before mirroring for Arabic), which the
+// scene may warp so busy decades get more room (as Beck's map enlarges the centre).
 // Every couple's children make one line: siblings are consecutive stations in birth order,
 // nudged apart when births are close. A child who has children of their own branches off
 // their station onto a new parallel track (a lane). Spouses sit beside their partner on the
@@ -55,6 +56,10 @@ export interface MetroOpts {
   /** Bin width for packing. */
   bin: number;
   mid: number;
+  /** Room kept free after a line's last station (for its line bullet). */
+  tail?: number;
+  /** x of a year (before mirroring); defaults to (year - mid) * k. */
+  year?: (y: number) => number;
 }
 
 export function metroLayout(M: StudioModel, o: MetroOpts): MetroLayout {
@@ -67,7 +72,7 @@ export function metroLayout(M: StudioModel, o: MetroOpts): MetroLayout {
     const order = M.get(id).spouses.map((s) => s.id);
     list.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
   }
-  const U = (y: number) => (y - o.mid) * o.k;
+  const U = o.year ?? ((y: number) => (y - o.mid) * o.k);
   const x = new Map<string, number>();
   const kidsOf = (p: StudioPerson) => p.kids.map((k) => M.get(k)).filter((k) => !k.virt);
   const roots = [M.root, ...M.people.filter((p) => p.virt)];
@@ -104,7 +109,8 @@ export function metroLayout(M: StudioModel, o: MetroOpts): MetroLayout {
   const shape = (f: MetroFamily): Contour => {
     const c: Contour = { top: new Map(), bot: new Map() };
     const last = f.kids[f.kids.length - 1] ?? f.head;
-    for (let b = bin(f.root ? (x.get(f.head.id) ?? 0) : f.from); b <= bin(end(last)); b++) put(c, b, 0, 0);
+    for (let b = bin(f.root ? (x.get(f.head.id) ?? 0) : f.from); b <= bin(end(last) + (o.tail ?? 0)); b++)
+      put(c, b, 0, 0);
     const branching = f.kids.filter((k) => fams.has(k.id));
     const sides: Record<string, StudioPerson[]> = { '1': [], '-1': [] };
     branching.forEach((k, i) => {

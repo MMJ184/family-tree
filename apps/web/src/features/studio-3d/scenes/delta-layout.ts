@@ -1,4 +1,4 @@
-import { QuadraticBezierCurve3, Vector3 } from 'three';
+import { CatmullRomCurve3, Vector3 } from 'three';
 import { type StudioModel, type StudioPerson, spouseYear } from '../model.ts';
 import { rng } from '../palette.ts';
 
@@ -8,7 +8,9 @@ import { rng } from '../palette.ts';
 // owns an angular sector sized by their leaf count, so channels nest and never cross. A
 // node is pushed downstream until its sector is wide enough for a portrait, so big
 // branches fork near the apex and small ones near the coast, as in a real fan delta.
-// Childless lines run on to the sea. Married-in spouses arrive along a side tributary.
+// Childless lines run on to the sea (in big families most sink into the salt flat instead,
+// like a wadi). Spouses flank their partner's settlement, alternating sides and stepping
+// upstream, each on a gold tributary that joins the partner's channel just above the fork.
 
 export interface Channel {
   pts: Vector3[];
@@ -17,17 +19,30 @@ export interface Channel {
   birth: number;
   grow: number;
   key: string;
-  col: string;
+  /** 1 for a spouse's tributary (drawn in gold). */
   tint: number;
   /** Distance from the spring at pts[0] (flow animation runs on it). */
   s0: number;
   /** Draw levee banks along it. */
   bank: boolean;
+  /** 1: a wadi that sinks into the salt flat instead of reaching the sea. */
+  fade: number;
+}
+
+/** A settlement: ground point, local flow direction and the half width of its channel there. */
+export interface Frame {
+  x: number;
+  y: number;
+  z: number;
+  dx: number;
+  dz: number;
+  hw: number;
 }
 
 export interface DeltaLayout {
   /** Ground point under each portrait. */
   ground: Vector3[];
+  frames: Frame[];
   channels: Channel[];
   /** Coast radius of the delta lobe, half spread, mainland coast z, hill depth and height. */
   Rc: number;
@@ -35,6 +50,8 @@ export interface DeltaLayout {
   zMain: number;
   T: number;
   H: number;
+  /** Room each settlement needs. */
+  sp: number;
   height(x: number, z: number): number;
   /** Ground grid: extents and resolution (the valley is carved at least a cell wider than the trunk). */
   grid: { x0: number; x1: number; z0: number; z1: number; nx: number; nz: number };
@@ -74,7 +91,7 @@ const sstep = (a: number, b: number, x: number) => {
 };
 
 /** Channel width from the number of people whose line flows through it (hydraulic width ~ sqrt of discharge). */
-export const widthOf = (D: number, big: boolean) => (big ? 0.28 : 0.32) + (big ? 0.2 : 0.42) * D ** 0.6;
+export const widthOf = (D: number, big: boolean) => (big ? 0.12 + 0.16 * D ** 0.62 : 0.32 + 0.42 * D ** 0.6);
 
 export function layoutDelta(M: StudioModel, big: boolean, rtl: boolean, size: number): DeltaLayout {
   const sx = rtl ? -1 : 1;
@@ -102,6 +119,19 @@ export function layoutDelta(M: StudioModel, big: boolean, rtl: boolean, size: nu
   count(M.root.id);
   const hwOf = (id: string) => widthOf(D.get(id) ?? 1, big) / 2;
 
+  // ---- spouse places: flanking the partner, alternating sides, a tier further upstream every two ----
+  const slot = (j: number) => {
+    const tier = Math.floor(j / 2);
+    return { up: sp * (0.5 + 1.05 * tier), off: sp * ((big ? 0.85 : 0.95) + 0.1 * tier), side: j % 2 ? -1 : 1 };
+  };
+  /** Spouse j of someone settled at (th, r); `so` picks the first side (away from the fan's axis). */
+  const spot = (th: number, r: number, j: number, so: number): [number, number] => {
+    const s = slot(j);
+    const rr = r - s.up;
+    const lat = so * s.side * s.off;
+    return [rr * Math.sin(th) + Math.cos(th) * lat, rr * Math.cos(th) - Math.sin(th) * lat];
+  };
+
   // ---- polar placement: thin angular slots for channels; settlements slide downstream until clear ----
   const R = new Map<string, number>([[M.root.id, 0]]);
   const TH = new Map<string, number>([[M.root.id, 0]]);
@@ -119,7 +149,8 @@ export function layoutDelta(M: StudioModel, big: boolean, rtl: boolean, size: nu
     grid.set(k, [...(grid.get(k) ?? []), [x, z]]);
   };
   mark(0, 0);
-  const back = sp * 1.05; // spouse settlements sit upstream on the person's own channel
+  const rootSp = spousesOf.get(M.root.id)?.length ?? 0;
+  for (let j = 0; j < rootSp; j++) mark(...spot(0, 0, j, sx));
   const order: StudioPerson[] = [];
   const q = [M.root];
   while (q.length) {
@@ -128,19 +159,20 @@ export function layoutDelta(M: StudioModel, big: boolean, rtl: boolean, size: nu
     for (const k of p.kids) {
       const kid = M.get(k);
       const th = (kid.ang - 0.5) * S * sx;
+      const so = Math.sign(th) || 1;
       const nsp = spousesOf.get(k)?.length ?? 0;
       const r0 = R.get(p.id) ?? 0;
-      const slot = (lane * L) / (Math.max(1, kid.leaves) * S);
-      let r = Math.max(r0 + step * Math.max(1, kid.gen - p.gen), r0 + back * (nsp + 1) + sp * 0.4, slot);
+      const room = (lane * L) / (Math.max(1, kid.leaves) * S);
+      const upMax = nsp ? slot(nsp - 1).up : 0;
+      let r = Math.max(r0 + step * Math.max(1, kid.gen - p.gen), r0 + upMax + sp * 1.25, room);
       const ok = (rr: number) => {
-        for (let j = 0; j <= nsp; j++) {
-          const r1 = rr - back * j;
-          if (!free(r1 * Math.sin(th), r1 * Math.cos(th))) return false;
-        }
+        if (!free(rr * Math.sin(th), rr * Math.cos(th))) return false;
+        for (let j = 0; j < nsp; j++) if (!free(...spot(th, rr, j, so))) return false;
         return true;
       };
       for (let it = 0; it < 400 && !ok(r); it++) r += sp * 0.3;
-      for (let j = 0; j <= nsp; j++) mark((r - back * j) * Math.sin(th), (r - back * j) * Math.cos(th));
+      mark(r * Math.sin(th), r * Math.cos(th));
+      for (let j = 0; j < nsp; j++) mark(...spot(th, r, j, so));
       R.set(k, r);
       TH.set(k, th);
       q.push(kid);
@@ -191,10 +223,10 @@ export function layoutDelta(M: StudioModel, big: boolean, rtl: boolean, size: nu
     birth: M.root.born - 4,
     grow: 3.5,
     key: M.root.id,
-    col: '#ffffff',
     tint: 0,
     s0: 0,
     bank: true,
+    fade: 0,
   });
   sAt.set(M.root.id, trunkLen);
   const pathOf = new Map<string, Vector3[]>([[M.root.id, trunk]]);
@@ -241,93 +273,101 @@ export function layoutDelta(M: StudioModel, big: boolean, rtl: boolean, size: nu
     }
     pathOf.set(p.id, pts);
     sAt.set(p.id, s0 + lenOf(pts));
-    channels.push({
-      pts,
-      hw0: hw,
-      hw1: hw,
-      birth: p.born,
-      grow: 1.4,
-      key: p.id,
-      col: '#ffffff',
-      tint: 0,
-      s0,
-      bank: true,
-    });
-    // Childless lines run on to the sea and flare into a mouth.
+    channels.push({ pts, hw0: hw, hw1: hw, birth: p.born, grow: 1.4, key: p.id, tint: 0, s0, bank: true, fade: 0 });
+    // Childless lines run on to the sea and flare into a mouth. In big families they sink into the salt
+    // flat a little way past the settlement instead, as Gulf wadis do (hundreds of mouths read as a comb).
     if (!p.kids.length) {
-      const drift = (rnd() - 0.5) * (p.leaves / L) * S * 0.5;
-      const ext = polarPath(th1, r1, th1 + drift, Rc + step * 0.45, Math.min(2.2, roomAt(r1) * 0.45 + 0.4));
+      const toSea = !big;
+      const drift = (rnd() - 0.5) * (p.leaves / L) * S * (toSea ? 0.5 : 0.2);
+      const rEnd = toSea ? Rc + step * 0.45 : r1 + step * 0.4;
+      const ext = polarPath(th1, r1, th1 + drift, rEnd, Math.min(2.2, roomAt(r1) * 0.45 + 0.4));
       channels.push({
         pts: ext,
         hw0: hw,
-        hw1: hw * (big ? 1.2 : 1.9),
+        hw1: hw * (toSea ? (big ? 1.2 : 1.9) : 0.6),
         birth: p.born + 0.8,
-        grow: 2 + ((Rc - r1) / step) * 1.2,
+        grow: 2 + ((rEnd - r1) / step) * 1.2,
         key: p.id,
-        col: '#ffffff',
         tint: 0,
         s0: sAt.get(p.id) ?? 0,
         bank: !big,
+        fade: toSea ? 0 : 1,
       });
     }
   }
 
   // ---- settlements ----
   const ground: Vector3[] = M.people.map(() => new Vector3());
+  const frames: Frame[] = M.people.map(() => ({ x: 0, y: 0, z: 0, dx: 0, dz: 1, hw: 0.2 }));
   for (const p of order) {
-    if (p === M.root) ground[p.idx]?.set(0, 0, 0);
-    else polar(TH.get(p.id) ?? 0, R.get(p.id) ?? 0, 0, ground[p.idx]);
+    const th = TH.get(p.id) ?? 0;
+    const g = ground[p.idx] as Vector3;
+    if (p === M.root) g.set(0, 0, 0);
+    else polar(th, R.get(p.id) ?? 0, 0, g);
+    Object.assign(frames[p.idx] as Frame, { x: g.x, y: 0, z: g.z, dx: Math.sin(th), dz: Math.cos(th), hw: hwOf(p.id) });
   }
 
-  // ---- marriages: a tributary from "another river" joining just upstream of the fork ----
-  const tangentAt = (pts: Vector3[], i: number) => {
-    const a = pts[Math.max(0, i - 1)] as Vector3;
-    const b = pts[Math.min(pts.length - 1, i + 1)] as Vector3;
-    return new Vector3(b.x - a.x, 0, b.z - a.z).normalize();
+  // ---- marriages: each spouse's settlement sits on a gold tributary that joins just above the fork ----
+  const walkUp = (pts: Vector3[], from: number, dist: number) => {
+    let acc = 0;
+    let j = from;
+    while (j > 0) {
+      const a = pts[j] as Vector3;
+      const b = pts[j - 1] as Vector3;
+      const l = a.distanceTo(b);
+      if (acc + l >= dist) return a.clone().lerp(b, (dist - acc) / Math.max(l, 1e-6));
+      acc += l;
+      j--;
+    }
+    return (pts[0] as Vector3).clone();
   };
-  const tl = sp * (big ? 1.25 : 1.45);
+  const tl = sp * (big ? 1.2 : 1.6);
+  const hwTrib = widthOf(1, big) * 0.3;
   for (const p of order) {
     const sps = spousesOf.get(p.id);
     const pts = pathOf.get(p.id);
     if (!sps?.length || !pts) continue;
-    const total = lenOf(pts);
-    const sideBase = (Math.sign(TH.get(p.id) ?? 0) || 1) * (p === M.root ? 1 : sx);
+    const th = TH.get(p.id) ?? 0;
+    const r = R.get(p.id) ?? 0;
+    const so = p === M.root ? sx : Math.sign(th) || 1;
+    const end = p === M.root ? pts.length - 2 : pts.length - 1;
+    // Local frame at the settlement: downstream d (radial) and the across-flow normal n.
+    const dx = p === M.root ? 0 : Math.sin(th);
+    const dz = p === M.root ? 1 : Math.cos(th);
     sps.forEach((s, k) => {
-      const want = Math.min(total * 0.8, back * (k + 1) * (p === M.root ? 1.6 : 1));
-      let acc = 0;
-      let j = pts.length - 1;
-      while (j > 0 && acc < want) {
-        acc += (pts[j] as Vector3).distanceTo(pts[j - 1] as Vector3);
-        j--;
-      }
-      const J = (pts[j] as Vector3).clone();
-      const d = tangentAt(pts, j);
-      const n = new Vector3(-d.z, 0, d.x);
-      const side = k % 2 === 0 ? sideBase : -sideBase;
-      const yJ = J.y;
-      const Q = J.clone()
-        .addScaledVector(d, -tl * 0.8)
-        .addScaledVector(n, side * tl * 1.1);
-      const C = J.clone()
-        .addScaledVector(d, -tl * 0.1)
-        .addScaledVector(n, side * tl * 0.6);
-      Q.y = C.y = yJ;
-      const curve = new QuadraticBezierCurve3(Q, C, J);
-      const tp = curve.getPoints(14);
-      ground[s.idx]?.set(J.x + n.x * side * sp * 0.12, yJ > 0.1 ? yJ - 0.28 : 0, J.z + n.z * side * sp * 0.12);
+      const [x, z] = spot(th, r, k, so);
+      const y = Math.max(0, height(x, z));
+      const Sx = new Vector3(x, y + 0.06, z);
+      const J = walkUp(pts, end, slot(k).up * 0.45 + sp * 0.2);
+      // The tributary comes in from further out and upstream, bends through the spouse's settlement and
+      // meets the partner's channel at an acute angle, pointing downstream.
+      const side = Math.sign((x - J.x) * dz - (z - J.z) * dx) || 1;
+      const nx = dz * side;
+      const nz = -dx * side;
+      const O = new Vector3(x + (nx * 0.8 - dx * 0.75) * tl, 0, z + (nz * 0.8 - dz * 0.75) * tl);
+      const Q = new Vector3(x + (nx * 0.34 - dx * 0.42) * tl, 0, z + (nz * 0.34 - dz * 0.42) * tl);
+      for (const v of [O, Q]) v.y = Math.max(0, height(v.x, v.z)) + 0.06;
+      const curve = new CatmullRomCurve3([O, Q, Sx, J], false, 'centripetal');
+      const tp = curve.getPoints(24);
+      ground[s.idx]?.set(x, y, z);
+      const f = frames[s.idx] as Frame;
+      const ax = J.x - x;
+      const az = J.z - z;
+      const al = Math.hypot(ax, az) || 1;
+      Object.assign(f, { x, y, z, dx: ax / al, dz: az / al, hw: hwTrib });
       const len = lenOf(tp);
       const yr = spouseYear(M, s);
       channels.push({
         pts: tp,
-        hw0: widthOf(1, big) * 0.3,
-        hw1: widthOf(1, big) * 0.5,
+        hw0: hwTrib * 0.35,
+        hw1: hwTrib,
         birth: yr - 1,
         grow: 1.2,
         key: s.id,
-        col: s.color,
         tint: 1,
-        s0: (sAt.get(p.id) ?? 0) - acc - len,
-        bank: true,
+        s0: (sAt.get(p.id) ?? 0) - len,
+        bank: false,
+        fade: 0,
       });
     });
   }
@@ -338,8 +378,11 @@ export function layoutDelta(M: StudioModel, big: boolean, rtl: boolean, size: nu
       const a = M.get(p.anchor);
       if (!a.mi) continue;
       const g = ground[a.idx];
-      if (g) ground[p.idx]?.copy(g).add(new Vector3(sx * sp * 0.8, 0, -sp * 0.4));
+      if (!g) continue;
+      ground[p.idx]?.copy(g).add(new Vector3(sx * sp * 0.8, 0, -sp * 0.4));
+      const gp = ground[p.idx] as Vector3;
+      Object.assign(frames[p.idx] as Frame, { x: gp.x, y: gp.y, z: gp.z, dx: 0, dz: 1, hw: 0 });
     }
 
-  return { ground, channels, Rc, half, zMain, T, H, height, grid: mesh };
+  return { ground, frames, channels, Rc, half, zMain, T, H, sp, height, grid: mesh };
 }

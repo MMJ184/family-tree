@@ -4,18 +4,22 @@ import { Color } from 'three';
 
 export const NOW = new Date().getFullYear();
 
-/** Colours for people who married in, keyed by their birth family (the prototype's family colours). */
+/**
+ * Colours for people who married in, keyed by their birth family. Muted mid tones (lightness about
+ * 0.45 to 0.6) that read on the black and on the white stage. No teal or cyan (teal marks the
+ * selection) and no gold (gold marks marriages); the slate is the quiet neutral of the set.
+ */
 export const PORTRAIT_COLOURS = [
-  '#d99a3a',
-  '#9a7ff0',
-  '#e26e8f',
-  '#4d9be0',
-  '#8cbf45',
-  '#e5824a',
-  '#6b7cf0',
-  '#d36ac4',
-  '#9aa7b3',
-  '#2fb3a3',
+  '#c0504d', // brick
+  '#c97a45', // burnt orange
+  '#8f9a48', // olive
+  '#5f9a5c', // moss
+  '#4f84c4', // steel blue
+  '#6672cc', // indigo
+  '#8a66c4', // violet
+  '#b05fae', // orchid
+  '#c75a86', // rose
+  '#8a96a8', // slate
 ];
 
 export interface Pal {

@@ -51,14 +51,28 @@ export function createGraph2D(el: HTMLElement, ctl: ViewCtl): GraphHandle {
     .d3VelocityDecay(0.32)
     .onEngineStop(() => ctl.onSettled())
     .onNodeHover((n) => {
-      ctl.hoverId = n ? n.id : null;
-      el.style.cursor = n ? 'pointer' : '';
+      const id = inside && n ? n.id : null;
+      ctl.hoverId = id;
+      el.style.cursor = id ? 'pointer' : '';
     })
     .onNodeClick((n) => {
       if (n.kind === 'p') ctl.onSelect(n.id);
       else focusNode(n);
     });
   applyForces(f);
+  // Hover counts only while the pointer is over the graph: no hover change is reported when the
+  // pointer leaves for a panel on top, which would leave the rest of the graph dimmed.
+  let inside = false;
+  const onEnter = () => {
+    inside = true;
+  };
+  const onLeave = () => {
+    inside = false;
+    ctl.hoverId = null;
+    el.style.cursor = '';
+  };
+  el.addEventListener('pointerenter', onEnter);
+  el.addEventListener('pointerleave', onLeave);
 
   let sig = '';
   const focusNode = (n: GNode) => {
@@ -112,6 +126,8 @@ export function createGraph2D(el: HTMLElement, ctl: ViewCtl): GraphHandle {
       f.width(w).height(h);
     },
     destroy() {
+      el.removeEventListener('pointerenter', onEnter);
+      el.removeEventListener('pointerleave', onLeave);
       f._destructor();
       el.replaceChildren();
     },

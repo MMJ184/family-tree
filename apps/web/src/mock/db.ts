@@ -33,7 +33,7 @@ export interface DemoDb {
 }
 
 /** Bump when the seed or table shapes change, so old saved demos are replaced. */
-const DB_VERSION = 11;
+const DB_VERSION = 14;
 const STORAGE_KEY = 'ft:demo-db';
 
 function fresh(sessionUserId: string | null = null): DemoDb {

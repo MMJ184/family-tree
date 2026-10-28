@@ -1,5 +1,7 @@
 import {
+  BackSide,
   BufferGeometry,
+  Color,
   CylinderGeometry,
   DoubleSide,
   Float32BufferAttribute,
@@ -12,20 +14,22 @@ import {
   PlaneGeometry,
   RingGeometry,
   ShaderMaterial,
+  SphereGeometry,
+  Vector2,
   Vector3,
   Vector4,
 } from 'three';
-import { skyDome } from '../gl.ts';
 import { spouseYear } from '../model.ts';
-import { lin } from '../palette.ts';
-import { buildAtlas, kfWeights } from './terrain-field.ts';
+import { buildAtlas, kfWeights, SEA0, SLOPE } from './terrain-field.ts';
 import {
   BIZ_FS,
   BIZ_VS,
-  PAPER_FS,
-  PAPER_VS,
   PIN_FS,
   PIN_VS,
+  SHEET_FS,
+  SHEET_VS,
+  SKY_FS,
+  SKY_VS,
   TERRAIN_FS,
   TERRAIN_VS,
   TRAIL_FS,
@@ -33,63 +37,143 @@ import {
 } from './terrain-glsl.ts';
 import type { SceneBuilder } from './types.ts';
 
-// Family Atlas: the family as a topographic island. The founder is the summit, each line of
-// descent a ridge as high as the line is big; people are map pins on the slopes and descent
-// paths are trails on the ground. Printed atlas by day, glowing GIS contours by night.
+// Family Atlas: the family as an island relief map printed on a sheet. The founder is the
+// summit, each line of descent a ridge as high as the line is big; every generation stands
+// on its own ring around the summit (the map's polar graticule); people are map pins and
+// descent paths are trails along the ridges, marriages dotted gold. By day a Swiss relief
+// map (sage, grey-buff and white rock, black contours, red trails, waterlines on a white sea);
+// by night a graphite relief with silver contours on a black sea. Teal marks only the
+// selected lineage. All colours are display colours (the shaders undo the tone curve).
 
-const LIGHT = {
-  ramp: ['#9fcaa6', '#c4dba5', '#ece2b2', '#ebc89e', '#e0a493', '#e8bcbb', '#f7e9e6'],
-  seaHi: '#d5ebe5',
-  seaLo: '#a3cad2',
-  ink: '#8a5b3d',
-  inkHi: '#7a3f3f',
-  seaInk: '#6c9caa',
-  grid: '#3f6f8e',
-  shade: '#a9b6d6',
-  lit: '#fff6e8',
-  paper: '#f4eddc',
-  accent: '#3e6a78',
-  desk: '#cfc6b5',
-  far: '#e6dfd2',
-  frame: '#3b3a36',
-  stem: '#2c2b30',
-  trail: '#b8432c',
-  trailCase: '#fbf6ec',
-  trailHi: '#e2401f',
-  gold: '#c7942f',
-};
+interface Look {
+  /** Hypsometric tints from the coast to the summit. */
+  tint: string[];
+  sea: string;
+  ink: string;
+  coast: string;
+  water: string;
+  grid: string;
+  /** Hillshade multipliers (linear r, g, b): the deepest shade, and lit slopes (above 1 brightens). */
+  shadow: [number, number, number];
+  lit: [number, number, number];
+  coastA: number;
+  /** What the map fades towards while a lineage is selected. */
+  fade: string;
+  paper: string;
+  sheetInk: string;
+  desk: string;
+  deskHi: string;
+  sky: string;
+  trail: string;
+  casing: string;
+  gold: string;
+  teal: string;
+  needle: string;
+  foot: string;
+  mark: string;
+  minor: number;
+  major: number;
+  waterA: number;
+  gridA: number;
+  scree: number;
+  grain: number;
+  relief: number;
+  caseA: number;
+  shadowA: number;
+  /** Lineage trails are pushed past the bloom threshold by this factor (dark only). */
+  glow: number;
+  bloom: number;
+  exposure: number;
+}
 
-const DARK = {
-  ramp: ['#0d3438', '#11423f', '#1b3f4c', '#2a3a5a', '#47336a', '#6f3a73', '#a04f86'],
-  seaHi: '#0a2230',
-  seaLo: '#040c14',
-  ink: '#33f0cf',
-  inkHi: '#ff6fb3',
-  seaInk: '#1d6f8a',
-  grid: '#1fa8d8',
-  shade: '#6e7fa8',
-  lit: '#d8e6ff',
-  paper: '#081420',
-  accent: '#7af5ff',
-  desk: '#03070c',
-  far: '#02050a',
-  frame: '#2fd5c6',
-  stem: '#2a3b48',
-  trail: '#ffcf7a',
-  trailCase: '#000000',
-  trailHi: '#fff1c4',
-  gold: '#ffc45a',
+const LOOK: { light: Look; dark: Look } = {
+  // Swiss relief map: sage lowlands, grey-buff slopes, white rock; trail red and waterline blue-grey.
+  light: {
+    tint: ['#b3be9f', '#c6cdb0', '#d7d6c2', '#e5e1d6', '#f3f2ee'],
+    sea: '#ffffff',
+    ink: '#1a1a1a',
+    coast: '#3d5770',
+    water: '#6f8ba6',
+    grid: '#8a8a8a',
+    shadow: [0.5, 0.54, 0.6],
+    lit: [1.15, 1.12, 1.04],
+    coastA: 0.85,
+    fade: '#f6f6f6',
+    paper: '#ffffff',
+    sheetInk: '#1a1a1a',
+    desk: '#ebebeb',
+    deskHi: '#f1f1f1',
+    sky: '#ebebeb',
+    trail: '#b23a2e',
+    casing: '#ffffff',
+    gold: '#b7862c',
+    teal: '#0f6b63',
+    needle: '#3a3a3a',
+    foot: '#1a1a1a',
+    mark: '#4a4a4a',
+    minor: 0.3,
+    major: 0.58,
+    waterA: 0.75,
+    gridA: 0.5,
+    scree: 0.32,
+    grain: 0.035,
+    relief: 1,
+    caseA: 0.55,
+    shadowA: 0.24,
+    glow: 1,
+    bloom: 0,
+    exposure: 1,
+  },
+  // Night atlas: graphite relief, silver contours and waterlines, ember trails on a black sea.
+  dark: {
+    tint: ['#171717', '#1c1c1c', '#232323', '#2c2c2c', '#393939'],
+    sea: '#000000',
+    ink: '#c4c8ce',
+    coast: '#d2d5da',
+    water: '#9097a0',
+    grid: '#5d6168',
+    shadow: [0.42, 0.42, 0.43],
+    lit: [1.6, 1.6, 1.6],
+    coastA: 0.38,
+    fade: '#0b0b0b',
+    paper: '#0e0e0e',
+    sheetInk: '#767b82',
+    desk: '#000000',
+    deskHi: '#0b0b0b',
+    sky: '#000000',
+    trail: '#e0745a',
+    casing: '#000000',
+    gold: '#e2b65a',
+    teal: '#4fd1bd',
+    needle: '#8e939a',
+    foot: '#c9cdd3',
+    mark: '#b5b9bf',
+    minor: 0.09,
+    major: 0.24,
+    waterA: 0.2,
+    gridA: 0.5,
+    scree: 0.22,
+    grain: 0.05,
+    relief: 1,
+    caseA: 0.55,
+    shadowA: 0,
+    glow: 1.7,
+    bloom: 0.45,
+    exposure: 1,
+  },
 };
 
 export const terrainScene: SceneBuilder = (ctx) => {
   const { M, U, big } = ctx;
   const rtl = ctx.rtl();
   const group = new Group();
-  const A = buildAtlas(M, big, rtl);
-  const { S, hMax } = A;
+  const size = big ? 1.5 : 2.1;
+  const A = buildAtlas(M, big, rtl, size);
+  const { S, hMax, step, mapR } = A;
   const pos = new Float32Array(M.n * 3);
-  const size = big ? 1.2 : 1.45;
   const stem = big ? 3.2 : 3.6;
+  const expo = { value: 1 };
+  const col = () => new Color();
 
   // Height uniforms shared by every draped material.
   const hU = {
@@ -108,70 +192,78 @@ export const terrainScene: SceneBuilder = (ctx) => {
   };
   reweigh();
 
-  // Terrain: one draped grid, coloured and contoured in the fragment shader.
-  const grid = S / (big ? 5 : 4);
+  // ---- Terrain: one draped grid, tinted, shaded and inked in the fragment shader ----
   const sgn = rtl ? -1 : 1;
   const terrainUni = {
     ...hU,
     uTime: U.uTime,
-    uRamp: { value: LIGHT.ramp.map(lin) },
-    uSeaLo: { value: lin(LIGHT.seaLo) },
-    uSeaHi: { value: lin(LIGHT.seaHi) },
-    uInk: { value: lin(LIGHT.ink) },
-    uInkHi: { value: lin(LIGHT.inkHi) },
-    uSeaInk: { value: lin(LIGHT.seaInk) },
-    uGridC: { value: lin(LIGHT.grid) },
-    uShade: { value: lin(LIGHT.shade) },
-    uLit: { value: lin(LIGHT.lit) },
-    uPaper: { value: lin(LIGHT.paper) },
-    uAccent: { value: lin(LIGHT.accent) },
+    uExpo: expo,
+    uTint: { value: [col(), col(), col(), col(), col()] },
+    uSea: { value: col() },
+    uInk: { value: col() },
+    uCoast: { value: col() },
+    uWater: { value: col() },
+    uGridC: { value: col() },
+    uShadow: { value: col() },
+    uLit: { value: col() },
+    uFade: { value: col() },
+    uCoastA: { value: 1 },
     uHMax: { value: hMax },
     uInt: { value: hMax / 14 },
-    uDeep: { value: Math.max(5, hMax * 0.3) },
-    uGrid: { value: grid },
     uTexel: { value: (2 * S) / A.n },
-    uDark: { value: 0 },
     uFocus: { value: 0 },
     uRtl: { value: sgn },
+    uStep: { value: step },
+    uRings: { value: Math.max(1, M.maxGen) },
+    uSea0: { value: SEA0 },
+    uSlope: { value: SLOPE },
+    uMinor: { value: 0 },
+    uMajor: { value: 0 },
+    uWaterA: { value: 0 },
+    uGridA: { value: 0 },
+    uScree: { value: 0 },
+    uGrain: { value: 0 },
+    uRelief: { value: 1 },
     uCompass: { value: [S * 0.8 * sgn, S * 0.8] },
-    uBar: { value: [-S * 0.86 * sgn, S * 0.9] },
+    uBar: { value: [-S * 0.88 * sgn, S * 0.9] },
   };
   const segs = big ? 300 : 220;
   const tGeo = new PlaneGeometry(2 * S, 2 * S, segs, segs);
   tGeo.rotateX(-Math.PI / 2);
-  const terrainMat = new ShaderMaterial({ uniforms: terrainUni, vertexShader: TERRAIN_VS, fragmentShader: TERRAIN_FS });
-  const terrain = new Mesh(tGeo, terrainMat);
+  const terrain = new Mesh(
+    tGeo,
+    new ShaderMaterial({ uniforms: terrainUni, vertexShader: TERRAIN_VS, fragmentShader: TERRAIN_FS }),
+  );
   terrain.frustumCulled = false;
   group.add(terrain);
 
-  // Paper sheet with the neatline, on a desk.
-  const band = S * 0.035;
-  const margin = S * 0.1;
-  const paperUni = {
-    uPaper: { value: lin(LIGHT.paper) },
-    uInk: { value: lin(LIGHT.frame) },
-    uDesk: { value: lin(LIGHT.desk) },
-    uFar: { value: lin(LIGHT.far) },
-    uGlow: { value: lin(DARK.frame) },
+  // ---- The printed sheet (margin and neatline) on a desk ----
+  const sheetUni = {
+    uExpo: expo,
+    uPaper: { value: col() },
+    uInk: { value: col() },
+    uDesk: { value: col() },
+    uDeskHi: { value: col() },
     uS: { value: S },
-    uB: { value: band },
-    uM: { value: margin },
-    uGrid: { value: grid },
-    uDark: { value: 0 },
+    uB: { value: S * 0.016 },
+    uM: { value: S * 0.1 },
+    uGrid: { value: step },
+    uShadowA: { value: 0 },
+    uGrain: { value: 0 },
   };
   const pGeo = new PlaneGeometry(S * 14, S * 14);
   pGeo.rotateX(-Math.PI / 2);
-  const paper = new Mesh(
+  const sheet = new Mesh(
     pGeo,
-    new ShaderMaterial({ uniforms: paperUni, vertexShader: PAPER_VS, fragmentShader: PAPER_FS }),
+    new ShaderMaterial({ uniforms: sheetUni, vertexShader: SHEET_VS, fragmentShader: SHEET_FS }),
   );
-  paper.position.y = -0.05;
-  group.add(paper);
+  sheet.position.y = -0.05;
+  group.add(sheet);
 
-  // Pins: a needle from the ground up to the portrait, and a coloured ring at its foot.
+  // ---- Pins: a needle from the ground up to the portrait, and a ring at its foot ----
   const pinGeo = (() => {
-    const parts: BufferGeometry[] = [new CylinderGeometry(0.07, 0.11, 1, 6, 1, true).translate(0, 0.5, 0)];
-    const ring = new RingGeometry(big ? 0.28 : 0.4, big ? 0.55 : 0.8, 18);
+    const parts: BufferGeometry[] = [new CylinderGeometry(0.055, 0.09, 1, 6, 1, true).translate(0, 0.5, 0)];
+    const ring = new RingGeometry(big ? 0.24 : 0.34, big ? 0.46 : 0.62, 20);
     ring.rotateX(-Math.PI / 2);
     parts.push(ring);
     const P: number[] = [];
@@ -197,30 +289,39 @@ export const terrainScene: SceneBuilder = (ctx) => {
   const aXZ = new Float32Array(n * 2);
   const aTop = new Float32Array(n);
   const aBirth = new Float32Array(n);
-  const aDeath = new Float32Array(n);
-  const aCol = new Float32Array(n * 3);
+  const aRole = new Float32Array(n);
   M.people.forEach((p, i) => {
     const v = A.at.get(p.id) ?? new Vector3();
     aXZ[i * 2] = v.x;
     aXZ[i * 2 + 1] = v.z;
-    const s = p.mi ? stem * 0.8 : stem;
-    aTop[i] = v.y + s;
+    // A couple's portraits hang level: a spouse's pin reaches up to the partner's height (seen at an
+    // angle, a lower portrait on a flank would otherwise slide under the partner's).
+    const a = p.mi && p.anchor ? A.at.get(p.anchor) : undefined;
+    const top = a ? Math.max(v.y + stem * 0.55, a.y + stem - 0.1) : v.y + stem;
+    aTop[i] = top;
     aBirth[i] = p.born;
-    aDeath[i] = p.died ?? 9999;
-    const c = lin(p.color);
-    aCol.set([c.r, c.g, c.b], i * 3);
+    aRole[i] = p.mi ? 1 : 0;
     pos[i * 3] = v.x;
-    pos[i * 3 + 1] = v.y + s + size * 1.05;
+    pos[i * 3 + 1] = top + size * 1.05;
     pos[i * 3 + 2] = v.z;
   });
   pinGeo.setAttribute('aXZ', new InstancedBufferAttribute(aXZ, 2));
   pinGeo.setAttribute('aTop', new InstancedBufferAttribute(aTop, 1));
   pinGeo.setAttribute('aBirth', new InstancedBufferAttribute(aBirth, 1));
-  pinGeo.setAttribute('aDeath', new InstancedBufferAttribute(aDeath, 1));
-  pinGeo.setAttribute('aCol', new InstancedBufferAttribute(aCol, 3));
+  pinGeo.setAttribute('aRole', new InstancedBufferAttribute(aRole, 1));
   pinGeo.setAttribute('aHi', new InstancedBufferAttribute(new Float32Array(n), 1));
   pinGeo.userData.keys = M.people.map((p) => p.id);
-  const pinUni = { ...hU, ...U, uStem: { value: lin(LIGHT.stem) }, uDark: { value: 0 }, uFocus: { value: 0 } };
+  const pinUni = {
+    ...hU,
+    ...U,
+    uExpo: expo,
+    uNeedle: { value: col() },
+    uFoot: { value: col() },
+    uGold: { value: col() },
+    uTeal: { value: col() },
+    uFade: { value: col() },
+    uFocus: { value: 0 },
+  };
   const pins = new InstancedMesh(
     pinGeo,
     new ShaderMaterial({ uniforms: pinUni, vertexShader: PIN_VS, fragmentShader: PIN_FS, side: DoubleSide }),
@@ -229,7 +330,7 @@ export const terrainScene: SceneBuilder = (ctx) => {
   pins.frustumCulled = false;
   group.add(pins);
 
-  // Trails: ribbons draped on the ridges, parent to child; dotted links to spouses.
+  // ---- Trails: ribbons draped on the ridges, parent to child; dotted links to spouses ----
   const T = { p: [] as number[], off: [] as number[], t: [] as number[], l: [] as number[] };
   const attr = { birth: [] as number[], kind: [] as number[], side: [] as number[], key: [] as string[] };
   const idx: number[] = [];
@@ -272,7 +373,7 @@ export const terrainScene: SceneBuilder = (ctx) => {
     const pts: Array<[number, number]> = [];
     for (let i = 0; i <= k; i++) {
       const t = i / k;
-      pts.push(A.xz(a.r + (b.r - a.r) * t, a.r < 1e-3 ? b.th : a.th + (b.th - a.th) * t));
+      pts.push(A.path(a, b, t));
     }
     ribbon(pts, p.born, 0, p.id);
   }
@@ -282,7 +383,7 @@ export const terrainScene: SceneBuilder = (ctx) => {
     const b = A.at.get(p.id);
     if (!a || !b) continue;
     const pts: Array<[number, number]> = [];
-    for (let i = 0; i <= 6; i++) pts.push([a.x + (b.x - a.x) * (i / 6), a.z + (b.z - a.z) * (i / 6)]);
+    for (let i = 0; i <= 8; i++) pts.push([a.x + (b.x - a.x) * (i / 8), a.z + (b.z - a.z) * (i / 8)]);
     ribbon(pts, spouseYear(M, p), 1, p.id);
   }
   const trGeo = new BufferGeometry();
@@ -299,13 +400,17 @@ export const terrainScene: SceneBuilder = (ctx) => {
   const trailUni = {
     ...hU,
     ...U,
-    uW: { value: big ? 0.24 : 0.42 },
-    uDash: { value: big ? 1.6 : 2.2 },
+    uExpo: expo,
+    uW: { value: big ? 0.22 : 0.3 },
+    uPx: { value: 800 },
+    uDash: { value: big ? 1.5 : 2.1 },
     uA: { value: big ? 0.6 : 1 },
-    uCore: { value: lin(LIGHT.trail) },
-    uCase: { value: lin(LIGHT.trailCase) },
-    uHiC: { value: lin(LIGHT.trailHi) },
-    uDark: { value: 0 },
+    uCaseA: { value: 0.9 },
+    uGlow: { value: 1 },
+    uCore: { value: col() },
+    uCase: { value: col() },
+    uTeal: { value: col() },
+    uGold: { value: col() },
     uFocus: { value: 0 },
   };
   const trails = new Mesh(
@@ -323,9 +428,15 @@ export const terrainScene: SceneBuilder = (ctx) => {
   );
   trails.frustumCulled = false;
   trails.renderOrder = 2;
+  // Pixel scale for the screen-space line weight (drawing buffer height times the projection's y scale).
+  const buf = new Vector2();
+  trails.onBeforeRender = (r, _s, cam) => {
+    r.getDrawingBufferSize(buf);
+    trailUni.uPx.value = (buf.y * cam.projectionMatrix.elements[5]) / 2;
+  };
   group.add(trails);
 
-  // Businesses: small gold survey markers above their owners.
+  // ---- Businesses: small survey markers above their owners ----
   const bizList = M.biz
     .map((bz) => {
       const os = bz.owners.map((o) => A.at.get(o)).filter((v): v is Vector3 => !!v);
@@ -334,9 +445,9 @@ export const terrainScene: SceneBuilder = (ctx) => {
       return { c, year: bz.year };
     })
     .filter((b): b is { c: Vector3; year: number } => !!b);
-  const bizUni = { ...U, uGold: { value: lin(LIGHT.gold) }, uFocus: { value: 0 } };
+  const bizUni = { ...U, uExpo: expo, uMark: { value: col() }, uFade: { value: col() }, uFocus: { value: 0 } };
   if (bizList.length) {
-    const bg = new OctahedronGeometry(big ? 0.55 : 0.8);
+    const bg = new OctahedronGeometry(big ? 0.5 : 0.7);
     bg.scale(1, 1.5, 1);
     bg.setAttribute('aYear', new InstancedBufferAttribute(new Float32Array(bizList.map((b) => b.year)), 1));
     const biz = new InstancedMesh(
@@ -355,41 +466,64 @@ export const terrainScene: SceneBuilder = (ctx) => {
     group.add(biz);
   }
 
-  const sky = skyDome(LIGHT.far, LIGHT.far, LIGHT.desk);
-  group.add(sky.mesh);
+  // ---- Stage backdrop beyond the desk ----
+  const skyUni = { uExpo: expo, uTop: { value: col() }, uLow: { value: col() } };
+  const sky = new Mesh(
+    new SphereGeometry(1400, 32, 16),
+    new ShaderMaterial({
+      side: BackSide,
+      depthWrite: false,
+      uniforms: skyUni,
+      vertexShader: SKY_VS,
+      fragmentShader: SKY_FS,
+    }),
+  );
+  group.add(sky);
 
   const tint = () => {
-    const dark = ctx.dark();
-    const C = dark ? DARK : LIGHT;
-    const q = ctx.pal();
-    terrainUni.uRamp.value.forEach((c, i) => {
-      c.copy(lin(C.ramp[i] ?? '#000000'));
+    const C = ctx.dark() ? LOOK.dark : LOOK.light;
+    terrainUni.uTint.value.forEach((c, i) => {
+      c.set(C.tint[i] ?? '#000000');
     });
-    terrainUni.uSeaLo.value.copy(lin(C.seaLo));
-    terrainUni.uSeaHi.value.copy(lin(C.seaHi));
-    terrainUni.uInk.value.copy(lin(C.ink));
-    terrainUni.uInkHi.value.copy(lin(C.inkHi));
-    terrainUni.uSeaInk.value.copy(lin(C.seaInk));
-    terrainUni.uGridC.value.copy(lin(C.grid));
-    terrainUni.uShade.value.copy(lin(C.shade));
-    terrainUni.uLit.value.copy(lin(C.lit));
-    terrainUni.uPaper.value.copy(lin(C.paper));
-    terrainUni.uAccent.value.copy(lin(C.accent));
-    terrainUni.uDark.value = dark ? 1 : 0;
-    paperUni.uPaper.value.copy(lin(C.paper));
-    paperUni.uInk.value.copy(lin(C.frame));
-    paperUni.uDesk.value.copy(lin(C.desk));
-    paperUni.uFar.value.copy(lin(C.far));
-    paperUni.uDark.value = dark ? 1 : 0;
-    pinUni.uStem.value.copy(lin(C.stem));
-    pinUni.uDark.value = dark ? 1 : 0;
-    trailUni.uCore.value.copy(lin(C.trail));
-    trailUni.uCase.value.copy(lin(C.trailCase));
-    trailUni.uHiC.value.copy(lin(C.trailHi));
-    trailUni.uDark.value = dark ? 1 : 0;
-    bizUni.uGold.value.copy(lin(C.gold));
-    sky.set(C.far, C.far, C.desk);
-    ctx.look(dark ? 0.55 : 0.08, dark ? q.exposure : 1.02);
+    terrainUni.uSea.value.set(C.sea);
+    terrainUni.uInk.value.set(C.ink);
+    terrainUni.uCoast.value.set(C.coast);
+    terrainUni.uWater.value.set(C.water);
+    terrainUni.uGridC.value.set(C.grid);
+    terrainUni.uShadow.value.setRGB(...C.shadow);
+    terrainUni.uCoastA.value = C.coastA;
+    terrainUni.uLit.value.setRGB(...C.lit);
+    terrainUni.uFade.value.set(C.fade);
+    terrainUni.uMinor.value = C.minor;
+    terrainUni.uMajor.value = C.major;
+    terrainUni.uWaterA.value = C.waterA;
+    terrainUni.uGridA.value = C.gridA;
+    terrainUni.uScree.value = C.scree;
+    terrainUni.uGrain.value = C.grain;
+    terrainUni.uRelief.value = C.relief;
+    sheetUni.uPaper.value.set(C.paper);
+    sheetUni.uInk.value.set(C.sheetInk);
+    sheetUni.uDesk.value.set(C.desk);
+    sheetUni.uDeskHi.value.set(C.deskHi);
+    sheetUni.uShadowA.value = C.shadowA;
+    sheetUni.uGrain.value = C.grain;
+    pinUni.uNeedle.value.set(C.needle);
+    pinUni.uFoot.value.set(C.foot);
+    pinUni.uGold.value.set(C.gold);
+    pinUni.uTeal.value.set(C.teal);
+    pinUni.uFade.value.set(C.fade);
+    trailUni.uCore.value.set(C.trail);
+    trailUni.uCase.value.set(C.casing);
+    trailUni.uTeal.value.set(C.teal);
+    trailUni.uGold.value.set(C.gold);
+    trailUni.uCaseA.value = C.caseA;
+    trailUni.uGlow.value = C.glow;
+    bizUni.uMark.value.set(C.mark);
+    bizUni.uFade.value.set(C.fade);
+    skyUni.uTop.value.set(C.sky);
+    skyUni.uLow.value.set(C.desk);
+    expo.value = C.exposure;
+    ctx.look(C.bloom, C.exposure);
   };
 
   return {
@@ -406,7 +540,11 @@ export const terrainScene: SceneBuilder = (ctx) => {
     dir: rtl ? -1 : 1,
     hiTargets: [{ geo: pinGeo, perPerson: true }, { geo: trGeo }],
     focus: [terrainUni.uFocus, pinUni.uFocus, trailUni.uFocus, bizUni.uFocus],
-    view: { target: new Vector3(0, hMax * 0.2, S * 0.06), cam: new Vector3(0, S * 1.35 + hMax, S * 2.05) },
+    // Fit-all: the whole island from the south, steep enough to read the map like a page.
+    view: {
+      target: new Vector3(0, hMax * 0.25, mapR * 0.04),
+      cam: new Vector3(0, hMax * 0.25 + mapR * 2.5 * 0.77, mapR * 0.04 + mapR * 2.5 * 0.64),
+    },
     follow: big ? 40 : 32,
   };
 };

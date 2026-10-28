@@ -56,6 +56,11 @@ export interface SceneDef {
   focus: Array<{ value: number }>;
   view: { target: Vector3; cam: Vector3 };
   follow: number;
+  /**
+   * Extra room in world units kept around every portrait when the camera frames a selected lineage or the
+   * whole family (default 0). For scenes whose highlighted structure reaches past the portraits.
+   */
+  framePad?: number;
   labelUp?: boolean;
   /** Name pills are drawn at this scale (default 1); compact scenes use smaller labels. */
   labelScale?: number;

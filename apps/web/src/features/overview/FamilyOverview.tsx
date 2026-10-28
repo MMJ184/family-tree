@@ -117,7 +117,7 @@ export function FamilyOverview({ graph, heroActions }: FamilyOverviewProps) {
         transition={{ duration: 0.45 }}
         className="relative mb-6 overflow-hidden rounded-3xl shadow-lg"
         style={{
-          background: `linear-gradient(135deg, ${family.color} 0%, color-mix(in oklab, ${family.color} 50%, #050b0c) 100%)`,
+          background: `linear-gradient(135deg, ${family.color} 0%, color-mix(in oklab, ${family.color} 50%, #000000) 100%)`,
         }}
       >
         <svg className="pointer-events-none absolute inset-0 size-full opacity-[0.14]" aria-hidden="true">
@@ -168,7 +168,7 @@ export function FamilyOverview({ graph, heroActions }: FamilyOverviewProps) {
                 to="/f/$familyId/tree"
                 params={{ familyId }}
                 search={{ view: 'tree' }}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-semibold text-[#14201f] no-underline shadow transition hover:bg-white/90"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-semibold text-[#0a0a0a] no-underline shadow transition hover:bg-white/90"
               >
                 <GitFork className="size-4" aria-hidden />
                 {t('openTree.title')}

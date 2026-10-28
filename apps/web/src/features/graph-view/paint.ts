@@ -21,13 +21,13 @@ export function readPalette(): Palette {
   const s = getComputedStyle(document.documentElement);
   const v = (k: string, fallback: string) => s.getPropertyValue(k).trim() || fallback;
   return {
-    fg: v('--ft-foreground', '#14201f'),
-    muted: v('--ft-muted-foreground', '#5d6664'),
-    border: v('--ft-border', 'rgba(20,32,31,0.1)'),
+    fg: v('--ft-foreground', '#0a0a0a'),
+    muted: v('--ft-muted-foreground', '#666666'),
+    border: v('--ft-border', 'rgba(0,0,0,0.1)'),
     card: v('--ft-card', '#ffffff'),
-    deadFill: v('--ft-muted', '#ece7df'),
+    deadFill: v('--ft-muted', '#efefef'),
     primary: v('--ft-primary', '#0f6b63'),
-    gold: v('--ft-gold', '#b7862c'),
+    gold: v('--ft-gold', '#8f6820'),
     male: v('--ft-male', '#2f7fb8'),
     female: v('--ft-female', '#c2577e'),
   };

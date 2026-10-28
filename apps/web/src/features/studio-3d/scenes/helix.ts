@@ -2,48 +2,158 @@ import {
   BufferAttribute,
   BufferGeometry,
   CircleGeometry,
-  Curve,
   Float32BufferAttribute,
   Group,
-  LineBasicMaterial,
-  LineCurve3,
-  LineSegments,
   Mesh,
   Points,
   Vector3,
 } from 'three';
-import { bake, builder, skyDome, type TubeBuilder, tube } from '../gl.ts';
 import { type StudioPerson, spouseYear } from '../model.ts';
 import { lin, NOW, rng } from '../palette.ts';
-import { baseMat, coreMat, floorMat, LOOK, linkMat, moteMat, sheathMat } from './helix-mat.ts';
+import { sizeFactor } from '../portraits.ts';
+import {
+  backdrop,
+  inkBuilder,
+  inkGeometry,
+  inkLine,
+  inkLineMat,
+  makeTone,
+  recolourInk,
+  setInk,
+  setTone,
+} from './galaxy-gl.ts';
+import { floorMat, LOOK, moteMat, ribbonMat, slabMat } from './helix-mat.ts';
 import type { SceneBuilder } from './types.ts';
 
-// Family Helix: one right-handed double helix of constant pitch. People born into the family
-// sit in lineage order along strand A, generation after generation, so the generations climb;
-// each spouse sits opposite on strand B and the couple is a base pair (a two-coloured rung).
-// Parent-to-child links are glowing arcs bowing outward across the turns.
+// Family Helix: one right-handed double helix of constant pitch. People born into the family sit in
+// lineage order along strand A, generation after generation, so the generations climb; each partner sits
+// opposite on strand B and the couple is a base pair: two slabs meeting in gold hydrogen bonds (a
+// marriage). Unpaired people are single bases. The base pairs take a restrained ramp of colour from the
+// oldest generation to the youngest; parent-to-child links are fine arcs bowing outward across the turns.
+// The backbones are flat ribbons, like a structural-biology cartoon, banded at each nucleotide.
 
 const TAU = Math.PI * 2;
-/** Angle between the strands: unequal grooves like B-DNA, so rungs miss the axis. */
+/** Angle between the strands: unequal grooves like B-DNA, so the base pairs miss the axis. */
 const GROOVE = Math.PI * 0.8;
 
 /** Point on a cylinder of radius r around the vertical axis (right-handed as θ grows upward). */
 const onCyl = (th: number, y: number, r: number, out = new Vector3()) => out.set(r * Math.sin(th), y, r * Math.cos(th));
 
-/** Arc on the cylinder surface between two people, bowing outward. */
-class Arc extends Curve<Vector3> {
-  constructor(
-    private readonly a: { th: number; y: number; r: number },
-    private readonly dth: number,
-    private readonly b: { y: number; r: number },
-    private readonly bow: number,
-  ) {
-    super();
-  }
-  override getPoint(t: number, out = new Vector3()) {
-    const s = t * t * (3 - 2 * t);
-    const r = this.a.r + (this.b.r - this.a.r) * t + this.bow * Math.sin(Math.PI * t);
-    return onCyl(this.a.th + this.dth * t, this.a.y + (this.b.y - this.a.y) * s, r, out);
+interface Lit {
+  pos: number[];
+  nor: number[];
+  t: number[];
+  birth: number[];
+  grow: number[];
+  g: number[];
+  kind: number[];
+  key: string[];
+  idx: number[];
+}
+
+const lit = (): Lit => ({ pos: [], nor: [], t: [], birth: [], grow: [], g: [], kind: [], key: [], idx: [] });
+
+function bakeLit(B: Lit) {
+  const g = new BufferGeometry();
+  g.setAttribute('position', new Float32BufferAttribute(B.pos, 3));
+  g.setAttribute('normal', new Float32BufferAttribute(B.nor, 3));
+  g.setAttribute('aT', new Float32BufferAttribute(B.t, 1));
+  g.setAttribute('aBirth', new Float32BufferAttribute(B.birth, 1));
+  g.setAttribute('aGrow', new Float32BufferAttribute(B.grow, 1));
+  g.setAttribute('aG', new Float32BufferAttribute(B.g, 1));
+  g.setAttribute('aKind', new Float32BufferAttribute(B.kind, 1));
+  g.setAttribute('aHi', new Float32BufferAttribute(new Float32Array(B.t.length), 1));
+  g.setIndex(B.idx);
+  g.userData.keys = B.key;
+  return g;
+}
+
+const X = new Vector3();
+const Y = new Vector3();
+const Z = new Vector3();
+const F = new Vector3();
+const E1 = new Vector3();
+const E2 = new Vector3();
+/** A flat slab (base) from a to b: horizontal, `w` wide and `h` thick; aT runs 0 at a to 1 at b. */
+function slab(
+  B: Lit,
+  a: Vector3,
+  b: Vector3,
+  w: number,
+  h: number,
+  birth: number,
+  grow: number,
+  key: string,
+  gen: number,
+  kind: number,
+) {
+  X.subVectors(b, a);
+  const L = X.length();
+  if (L < 1e-4) return;
+  X.divideScalar(L);
+  Y.set(0, 1, 0).addScaledVector(X, -X.y).normalize();
+  Z.crossVectors(X, Y).normalize();
+  // Six faces: [normal axis, sign], with the four corners of each face.
+  const faces: Array<[Vector3, number]> = [
+    [Y, 1],
+    [Y, -1],
+    [Z, 1],
+    [Z, -1],
+    [X, 1],
+    [X, -1],
+  ];
+  for (const [axis, sgn] of faces) {
+    const base = B.pos.length / 3;
+    F.copy(axis).multiplyScalar(sgn);
+    const corners: Array<[number, number, number]> =
+      axis === Y
+        ? [
+            [0, sgn, -1],
+            [1, sgn, -1],
+            [1, sgn, 1],
+            [0, sgn, 1],
+          ]
+        : axis === Z
+          ? [
+              [0, -1, sgn],
+              [1, -1, sgn],
+              [1, 1, sgn],
+              [0, 1, sgn],
+            ]
+          : [
+              [sgn > 0 ? 1 : 0, -1, -1],
+              [sgn > 0 ? 1 : 0, 1, -1],
+              [sgn > 0 ? 1 : 0, 1, 1],
+              [sgn > 0 ? 1 : 0, -1, 1],
+            ];
+    for (const [sx, sy, sz] of corners) {
+      B.pos.push(
+        a.x + X.x * L * sx + Y.x * (h / 2) * sy + Z.x * (w / 2) * sz,
+        a.y + X.y * L * sx + Y.y * (h / 2) * sy + Z.y * (w / 2) * sz,
+        a.z + X.z * L * sx + Y.z * (h / 2) * sy + Z.z * (w / 2) * sz,
+      );
+      B.nor.push(F.x, F.y, F.z);
+      B.t.push(sx);
+      B.birth.push(birth);
+      B.grow.push(grow);
+      B.g.push(gen);
+      B.kind.push(kind);
+      B.key.push(key);
+    }
+    // Wind each face so its front faces outward (checked against the face's own normal).
+    const p0 = base * 3;
+    E1.set(
+      (B.pos[p0 + 3] ?? 0) - (B.pos[p0] ?? 0),
+      (B.pos[p0 + 4] ?? 0) - (B.pos[p0 + 1] ?? 0),
+      (B.pos[p0 + 5] ?? 0) - (B.pos[p0 + 2] ?? 0),
+    );
+    E2.set(
+      (B.pos[p0 + 6] ?? 0) - (B.pos[p0] ?? 0),
+      (B.pos[p0 + 7] ?? 0) - (B.pos[p0 + 1] ?? 0),
+      (B.pos[p0 + 8] ?? 0) - (B.pos[p0 + 2] ?? 0),
+    );
+    if (E1.cross(E2).dot(F) < 0) B.idx.push(base, base + 2, base + 1, base, base + 3, base + 2);
+    else B.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
 }
 
@@ -89,8 +199,7 @@ export const helixScene: SceneBuilder = (ctx) => {
   const yOf = (th: number) => (th / TAU) * P;
   const thMax = thOf(slots);
   const H = yOf(thMax);
-  const out = 0.95 + size * 0.15; // portraits sit just outside the glass
-  const sheathR = big ? 0.4 + R * 0.006 : 0.5;
+  const out = 0.95 + size * 0.15; // portraits sit just outside the backbone
 
   // Where everyone sits: angle, height, strand.
   const place = new Map<string, { th: number; y: number; b: boolean }>();
@@ -118,8 +227,9 @@ export const helixScene: SceneBuilder = (ctx) => {
     onCyl(q.th, q.y, R + out, v);
     pos.set([v.x, v.y, v.z], i * 3);
   });
+  const genT = (g: number) => (M.maxGen > 0 ? g / M.maxGen : 0);
 
-  // ---- strands: glass sheath + glowing core; each ring appears once its people are born ----
+  // ---- backbones: two flat ribbons; each stretch appears once the people beside it are born ----
   const seen = M.people
     .map((p) => ({ th: (place.get(p.id)?.th ?? 0) - (place.get(p.id)?.b ? GROOVE : 0), born: p.born }))
     .sort((a, b) => a.th - b.th);
@@ -133,140 +243,169 @@ export const helixScene: SceneBuilder = (ctx) => {
   };
   const th0 = -0.2 * TAU;
   const th1 = thMax + 0.15 * TAU;
-  const perTurn = big ? 72 : 96;
+  const perTurn = big ? 72 : 112;
   const steps = Math.ceil(((th1 - th0) / TAU) * perTurn);
-  const strand = (B: TubeBuilder, off: number, r: number, radial: number) => {
-    const base = B.pos.length / 3;
-    const C = new Vector3();
-    const T = new Vector3();
-    const N = new Vector3();
-    const Bn = new Vector3();
-    const n = new Vector3();
+  const ribW = big ? 0.62 : 0.95;
+  const ribH = big ? 0.2 : 0.3;
+  const radial = big ? 10 : 16;
+  // Superellipse profile (a flat band with rounded edges): offsets across (x) and outward (y), and normals.
+  const prof: Array<[number, number, number, number]> = [];
+  for (let j = 0; j <= radial; j++) {
+    const a = (j / radial) * TAU;
+    const cs = Math.cos(a);
+    const sn = Math.sin(a);
+    const nx = Math.sign(cs) * Math.abs(cs) ** 1.5 * ribH;
+    const ny = Math.sign(sn) * Math.abs(sn) ** 1.5 * ribW;
+    const l = Math.hypot(nx, ny) || 1;
+    prof.push([
+      Math.sign(cs) * Math.abs(cs) ** 0.5 * (ribW / 2),
+      Math.sign(sn) * Math.abs(sn) ** 0.5 * (ribH / 2),
+      nx / l,
+      ny / l,
+    ]);
+  }
+  const RB = lit();
+  const C = new Vector3();
+  const T = new Vector3();
+  const N = new Vector3();
+  const Bn = new Vector3();
+  const ribbon = (off: number) => {
+    const base = RB.pos.length / 3;
     for (let i = 0; i <= steps; i++) {
       const th = th0 + ((th1 - th0) * i) / steps;
-      const y = yOf(th);
-      onCyl(th + off, y, R, C);
-      // Analytic frame: N points at the axis, T along the strand.
-      N.set(-Math.sin(th + off), 0, -Math.cos(th + off));
-      T.set(R * Math.cos(th + off), P / TAU, -R * Math.sin(th + off)).normalize();
+      const a = th + off;
+      onCyl(a, yOf(th), R, C);
+      N.set(Math.sin(a), 0, Math.cos(a));
+      T.set(R * Math.cos(a), P / TAU, -R * Math.sin(a)).normalize();
       Bn.crossVectors(T, N).normalize();
       const birth = birthAt(th);
-      for (let j = 0; j <= radial; j++) {
-        const a = (j / radial) * TAU;
-        n.copy(N).multiplyScalar(Math.cos(a)).addScaledVector(Bn, Math.sin(a));
-        B.pos.push(C.x + n.x * r, C.y + n.y * r, C.z + n.z * r);
-        B.nor.push(n.x, n.y, n.z);
-        B.t.push(th / TAU);
-        B.u.push(j / radial);
-        B.birth.push(birth);
-        B.grow.push(1);
-        B.key.push('');
-        B.col.push(1, 1, 1);
+      for (const [px, py, nx, ny] of prof) {
+        RB.pos.push(C.x + Bn.x * px + N.x * py, C.y + Bn.y * px + N.y * py, C.z + Bn.z * px + N.z * py);
+        RB.nor.push(Bn.x * nx + N.x * ny, Bn.y * nx + N.y * ny, Bn.z * nx + N.z * ny);
+        RB.t.push(th / TAU);
+        RB.birth.push(birth);
+        RB.grow.push(1);
+        RB.g.push(0);
+        RB.kind.push(0);
+        RB.key.push('');
       }
     }
     for (let i = 0; i < steps; i++)
       for (let j = 0; j < radial; j++) {
         const a = base + i * (radial + 1) + j;
         const b = a + radial + 1;
-        B.idx.push(a, b, a + 1, b, b + 1, a + 1);
+        RB.idx.push(a, b, a + 1, b, b + 1, a + 1);
       }
   };
-  const withCol = (B: TubeBuilder) => {
-    const g = bake(B);
-    g.setAttribute('aCol', new Float32BufferAttribute(B.col, 3));
-    return g;
-  };
-  const SB = builder();
-  strand(SB, 0, sheathR, big ? 10 : 14);
-  strand(SB, GROOVE, sheathR, big ? 10 : 14);
-  const sheath = sheathMat(U);
-  const sheathMesh = new Mesh(withCol(SB), sheath.mat);
-  sheathMesh.renderOrder = 2;
-  const CB = builder();
-  strand(CB, 0, 0.11, 5);
-  strand(CB, GROOVE, 0.11, 5);
-  const core = coreMat(U);
-  const coreMesh = new Mesh(withCol(CB), core.mat);
-  group.add(coreMesh, sheathMesh);
+  ribbon(0);
+  ribbon(GROOVE);
+  const T0 = makeTone();
+  const rib = ribbonMat(U, T0);
+  // One faint band per nucleotide (person slot) along the strand.
+  rib.uni.uBands.value = (TAU * c) / gap;
+  const ribMesh = new Mesh(bakeLit(RB), rib.mat);
+  ribMesh.renderOrder = 3;
 
-  // ---- base pairs: two half-rungs in each person's colour, meeting near the axis ----
-  const RB = builder();
-  const rungR = big ? 0.13 + R * 0.002 : 0.26;
-  const half = (a: Vector3, b: Vector3, birth: number, key: string, hex: string) => {
-    const before = RB.pos.length / 3;
-    tube(RB, new LineCurve3(a, b), rungR, rungR * 0.82, 2, 8, birth, key, 1.6);
-    const col = lin(hex);
-    for (let i = before; i < RB.pos.length / 3; i++) RB.col.push(col.r, col.g, col.b);
-  };
+  // ---- base pairs: slabs from each strand towards the axis, gold hydrogen bonds between partners ----
+  const SB = lit();
+  const sw = big ? 0.5 : 0.82;
+  const sh = big ? 0.14 : 0.2;
   const a = new Vector3();
   const b = new Vector3();
+  const m0 = new Vector3();
+  const m1 = new Vector3();
+  const off = new Vector3();
+  const side = new Vector3();
+  const up = new Vector3(0, 1, 0);
   for (const p of line) {
     const pa = place.get(p.id);
     if (!pa) continue;
     const sp = spousesOf.get(p.id) ?? [];
     if (!sp.length) {
-      if (big) continue; // big families: no stubs, the ladder stays legible
-      // Unpaired base: a short stub toward the axis.
+      if (big) continue; // big families: no single bases, the ladder stays legible
       onCyl(pa.th, pa.y, R, a);
       onCyl(pa.th + GROOVE, pa.y, R, b);
-      half(a.clone(), a.clone().lerp(b, 0.24), p.born, p.id, p.color);
+      slab(SB, a.clone(), a.clone().lerp(b, 0.27), sw, sh, p.born, 1.4, p.id, genT(p.gen), 0);
       continue;
     }
     for (const q of sp) {
       const pb = place.get(q.id);
       if (!pb) continue;
-      const th = pb.th - GROOVE;
-      onCyl(th, pb.y, R, a);
+      onCyl(pb.th - GROOVE, pb.y, R, a);
       onCyl(pb.th, pb.y, R, b);
-      const mid = a.clone().lerp(b, 0.5);
       const yr = spouseYear(M, q);
-      half(a.clone(), a.clone().lerp(mid, 0.93), yr, q.id, p.color);
-      half(b.clone(), b.clone().lerp(mid, 0.93), yr, q.id, q.color);
+      m0.copy(a).lerp(b, 0.43);
+      m1.copy(a).lerp(b, 0.57);
+      slab(SB, a.clone(), m0.clone(), sw, sh, yr, 1.6, q.id, genT(p.gen), 0);
+      slab(SB, b.clone(), m1.clone(), sw, sh, yr, 1.6, q.id, genT(p.gen), 1);
+      // Two hydrogen bonds across the gap, side by side.
+      side.subVectors(b, a).normalize().cross(up).normalize();
+      for (const s of [-0.24, 0.24]) {
+        off.copy(side).multiplyScalar(sw * s);
+        slab(SB, m0.clone().add(off), m1.clone().add(off), sw * 0.12, sh * 0.55, yr + 1.2, 0.8, q.id, genT(p.gen), 2);
+      }
     }
   }
-  const bases = baseMat(U, big ? 0.25 : 1);
-  const baseGeo = withCol(RB);
-  group.add(new Mesh(baseGeo, bases.mat));
+  const slabGeo = bakeLit(SB);
+  const slabs = slabMat(U, T0);
+  const slabMesh = new Mesh(slabGeo, slabs.mat);
+  slabMesh.renderOrder = 2;
 
-  // ---- lineage arcs, parent to child ----
-  const LB = builder();
+  // ---- ink: lineage arcs bowing outward, generation rings and the axis ----
+  const IB = inkBuilder();
+  const kinds: number[] = [];
+  const mark = (k: number) => {
+    while (kinds.length < IB.t.length) kinds.push(k);
+  };
+  const white = lin('#ffffff');
+  const medalR = (p: StudioPerson) => size * sizeFactor(p) * 1.15 * 0.72;
+  const bow = big ? R * 0.06 + 0.6 : R * 0.12 + 0.6;
+  const pp = new Vector3();
+  const pc = new Vector3();
   for (const p of line) {
     if (!p.parent || p.virt) continue;
-    const pp = place.get(p.parent);
-    const pc = place.get(p.id);
-    if (!pp || !pc) continue;
-    let dth = (pc.th - pp.th) % TAU;
+    const qa = place.get(p.parent);
+    const qb = place.get(p.id);
+    if (!qa || !qb) continue;
+    let dth = (qb.th - qa.th) % TAU;
     if (dth > Math.PI) dth -= TAU;
     if (dth < -Math.PI) dth += TAU;
-    const curve = new Arc({ th: pp.th, y: pp.y, r: R + out }, dth, { y: pc.y, r: R + out }, R * 0.12 + 0.6);
-    tube(LB, curve, big ? 0.08 : 0.065, big ? 0.08 : 0.065, big ? 16 : 28, big ? 4 : 6, p.born, p.id, 1.3);
-    for (let i = LB.col.length / 3; i < LB.pos.length / 3; i++) LB.col.push(1, 1, 1);
+    onCyl(qa.th, qa.y, R + out, pp);
+    onCyl(qb.th, qb.y, R + out, pc);
+    const ta = medalR(M.get(p.parent));
+    const tb = medalR(p);
+    const n = big ? 14 : 30;
+    const pts: Vector3[] = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const s = t * t * (3 - 2 * t);
+      const q = onCyl(qa.th + dth * t, qa.y + (qb.y - qa.y) * s, R + out + bow * Math.sin(Math.PI * t));
+      if (q.distanceTo(pp) < ta || q.distanceTo(pc) < tb) continue;
+      pts.push(q);
+    }
+    if (pts.length > 1) inkLine(IB, pts, p.born, p.id, white, 1, 1);
+    mark(0);
   }
-  const links = linkMat(U);
-  const linkGeo = withCol(LB);
-  const linkMesh = new Mesh(linkGeo, links.mat);
-  linkMesh.renderOrder = 3;
-  group.add(linkMesh);
-
-  // ---- generation rings and the axis ----
-  const lines: number[] = [];
-  const ringR = R + out + R * 0.16 + 1.6;
+  const ringR = R + out + bow + 1.6;
   for (let g = 1; g < genStart.length; g++) {
     const s = genStart[g];
     if (s == null || s <= 0.5) continue;
     const y = yOf(thOf(s));
-    const n = 120;
-    for (let k = 0; k < n; k += 2) {
-      onCyl((k / n) * TAU, y, ringR, a);
-      onCyl(((k + 1) / n) * TAU, y, ringR, b);
-      lines.push(a.x, a.y, a.z, b.x, b.y, b.z);
-    }
+    const pts: Vector3[] = [];
+    for (let k = 0; k <= 160; k++) pts.push(onCyl((k / 160) * TAU, y, ringR));
+    const first = line.find((p) => p.gen >= g);
+    inkLine(IB, pts, first ? first.born - 1 : M.minYear, '', white, 1, 0.9, 0.9);
+    mark(1);
   }
-  lines.push(0, yOf(th0), 0, 0, H + P * 0.2, 0);
-  const lineMat = new LineBasicMaterial({ transparent: true, opacity: 0.35, depthWrite: false });
-  group.add(
-    new LineSegments(new BufferGeometry().setAttribute('position', new Float32BufferAttribute(lines, 3)), lineMat),
-  );
+  inkLine(IB, [new Vector3(0, yOf(th0), 0), new Vector3(0, H + P * 0.2, 0)], M.minYear - 10, '', white, 1, 0.8, 0.7);
+  mark(1);
+  const inkGeo = inkGeometry(IB);
+  const inkKinds = Uint8Array.from(kinds);
+  const arcs = inkLineMat(U, T0);
+  arcs.uni.uWidth.value = big ? 1 : 1.25;
+  const arcMesh = new Mesh(inkGeo, arcs.mat);
+  arcMesh.frustumCulled = false;
+  arcMesh.renderOrder = 4;
 
   // ---- motes, plinth and backdrop ----
   const r1 = rng(11);
@@ -283,45 +422,53 @@ export const helixScene: SceneBuilder = (ctx) => {
   const mg = new BufferGeometry();
   mg.setAttribute('position', new BufferAttribute(mp, 3));
   mg.setAttribute('aPh', new BufferAttribute(mph, 1));
-  const motes = moteMat(U, mH);
+  const motes = moteMat(U, T0, mH);
   const moteMesh = new Points(mg, motes.mat);
   moteMesh.position.y = yOf(th0);
   moteMesh.frustumCulled = false;
-  moteMesh.renderOrder = 4;
-  group.add(moteMesh);
+  moteMesh.renderOrder = 5;
   const fR = R * 2.3 + 8;
-  const floor = floorMat(fR);
-  const plinth = new Mesh(new CircleGeometry(fR * 1.25, 96), floor.mat);
+  const floor = floorMat(T0, fR, R);
+  const plinth = new Mesh(new CircleGeometry(fR * 1.1, 128), floor.mat);
   plinth.rotation.x = -Math.PI / 2;
   plinth.position.y = yOf(th0) - P * 0.25;
-  group.add(plinth);
-  const sky = skyDome(LOOK.dark.top, LOOK.dark.hor, LOOK.dark.ground);
-  group.add(sky.mesh);
+  plinth.renderOrder = 1;
+  group.add(backdrop(T0), plinth, slabMesh, ribMesh, arcMesh, moteMesh);
 
   const tint = () => {
-    const L = ctx.dark() ? LOOK.dark : LOOK.light;
-    sky.set(L.top, L.hor, L.ground);
-    sheath.uni.uTint.value.copy(lin(L.tint));
-    sheath.uni.uRim.value.copy(lin(L.rim));
-    sheath.uni.uBody.value = L.dark ? 0.03 : 0.22;
-    core.uni.uCore.value.copy(lin(L.core));
-    core.uni.uGain.value = L.dark ? 1.05 : 0.9;
-    bases.uni.uSky.value.copy(lin(L.hor));
-    bases.uni.uGlow.value.copy(lin(L.rim));
-    links.uni.uGlow.value.copy(lin(L.link));
-    links.setAdd(L.dark);
+    const dark = ctx.dark();
+    const L = dark ? LOOK.dark : LOOK.light;
+    setTone(T0, !dark, L.exposure, L.paperC, L.paperE);
+    rib.uni.uGlass.value.copy(lin(L.glass));
+    rib.uni.uRim.value.copy(lin(L.rim));
+    rib.uni.uInkC.value.copy(lin(L.ink));
+    rib.setLight(!dark);
+    slabs.uni.uR0.value.copy(lin(L.ramp[0]));
+    slabs.uni.uR1.value.copy(lin(L.ramp[1]));
+    slabs.uni.uR2.value.copy(lin(L.ramp[2]));
+    slabs.uni.uGold.value.copy(lin(L.gold));
+    slabs.uni.uTeal.value.copy(lin(L.teal));
+    setInk(arcs.mat, !dark);
+    arcs.uni.uHi.value.copy(lin(L.teal));
+    arcs.uni.uGlow.value = L.glow;
+    arcs.uni.uDim.value = dark ? 0.18 : 0.26;
+    const arcC = lin(L.arc);
+    const ringC = lin(L.ring);
+    // Big families: hundreds of arcs would weave a curtain, so each one is fainter (the lineage stays full strength).
+    const arcA = L.arcA * (big ? (dark ? 0.6 : 0.42) : 1);
+    recolourInk(inkGeo, inkKinds, (k) => (k === 1 ? [ringC, L.ringA] : [arcC, arcA]));
+    floor.uni.uFloor.value.copy(lin(L.floor));
+    floor.uni.uLine.value.copy(lin(L.floorLine));
+    floor.uni.uShadow.value.copy(lin(L.shadow));
+    floor.setLight(!dark);
     motes.uni.uCol.value.copy(lin(L.mote));
-    motes.setAdd(L.dark);
-    floor.uni.uC.value.copy(lin(L.floor));
-    floor.uni.uAdd.value = L.dark ? 1 : 0;
-    lineMat.color.copy(lin(L.line));
-    lineMat.opacity = L.dark ? 0.4 : 0.55;
+    motes.setLight(!dark);
     ctx.look(L.bloom, L.exposure);
   };
 
-  // Default view: the whole helix, a little from above; RTL looks from the mirrored side.
-  const target = new Vector3(0, H * 0.5, 0);
-  const dist = (H * 0.5 + P * 0.6 + 4) / Math.tan((21 * Math.PI) / 180);
+  // Default view: the whole helix, a little from above; Arabic looks from the mirrored side.
+  const target = new Vector3(0, H * 0.48, 0);
+  const dist = (H * 0.5 + P * 0.55 + 3) / Math.tan((21 * Math.PI) / 180) / 1.12;
   const az = 0.42;
   const camAt = (rtl: boolean) =>
     new Vector3((rtl ? -1 : 1) * Math.sin(az) * dist, H * 0.5 + dist * 0.2, Math.cos(az) * dist);
@@ -336,12 +483,9 @@ export const helixScene: SceneBuilder = (ctx) => {
     lift: 5,
     labelScale: 0.86,
     tint,
-    hiTargets: [{ geo: baseGeo }, { geo: linkGeo }],
-    focus: [sheath.uni.uFocus, core.uni.uFocus, bases.uni.uFocus, links.uni.uFocus],
+    hiTargets: [{ geo: slabGeo }, { geo: inkGeo }],
+    focus: [rib.uni.uFocus, slabs.uni.uFocus, arcs.uni.uFocus],
     view,
     follow: big ? 30 : 27,
-    relang: () => {
-      view.cam.copy(camAt(ctx.rtl()));
-    },
   };
 };

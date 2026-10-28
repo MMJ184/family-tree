@@ -9,3 +9,6 @@ playwright-report
 *.local
 .DS_Store
 .playwright-mcp
+
+# Built demo bundles for hosting
+*.zip

@@ -343,13 +343,30 @@ const KAABI: FamilySeed = {
     P('hn', 'Hind', 'هند', 'F', 2001, null, 'kaabi', { occupation: 'Student' }),
     P('wf', 'Wadeema', 'وديمة', 'F', 1946, null, 'suwaidi'),
     P('me', 'Meera', 'ميرة', 'F', 1972, null, 'zaabi'),
+    // Hamad has four wives at the same time, each with her own children.
+    P('hw1', 'Fatima', 'فاطمة', 'F', 1974, null, 'zaabi'),
+    P('hw2', 'Mariam', 'مريم', 'F', 1978, null, 'suwaidi'),
+    P('hw3', 'Noura', 'نورة', 'F', 1982, null, 'hammadi'),
+    P('hw4', 'Sara', 'سارة', 'F', 1988, null, 'ketbi'),
+    P('hk1', 'Rashid', 'راشد', 'M', 1995, null, 'kaabi'),
+    P('hk2', 'Moza', 'موزة', 'F', 1997, null, 'kaabi'),
+    P('hk3', 'Saeed', 'سعيد', 'M', 2000, null, 'kaabi'),
+    P('hk4', 'Khalid', 'خالد', 'M', 2000, null, 'kaabi'),
+    P('hk5', 'Shaikha', 'شيخة', 'F', 2003, null, 'kaabi'),
+    P('hk6', 'Mohammed', 'محمد', 'M', 2005, null, 'kaabi'),
+    P('hk7', 'Latifa', 'لطيفة', 'F', 2008, null, 'kaabi'),
+    P('hk8', 'Zayed', 'زايد', 'M', 2012, null, 'kaabi'),
   ],
-  marriedIn: ['sl', 'hi', 'wf', 'me'],
+  marriedIn: ['sl', 'hi', 'wf', 'me', 'hw1', 'hw2', 'hw3', 'hw4'],
   unions: [
     { a: 'ob', b: 'sl', year: 1905, kids: ['f1', 'ju'] },
     { a: 'ju', b: 'hi', year: 1938, kids: ['mj', 'ms'] },
     { a: 'mj', b: 'wf', year: 1966, kids: ['ab', 'ha', 'mr'] },
     { a: 'ab', b: 'me', year: 1995, kids: ['sf', 'hn'] },
+    { a: 'ha', b: 'hw1', year: 1994, kids: ['hk1', 'hk2', 'hk3'] },
+    { a: 'ha', b: 'hw2', year: 1999, kids: ['hk4', 'hk5'] },
+    { a: 'ha', b: 'hw3', year: 2004, kids: ['hk6', 'hk7'] },
+    { a: 'ha', b: 'hw4', year: 2010, kids: ['hk8'] },
   ],
   businesses: [
     {
@@ -462,10 +479,14 @@ const MANGUKIYA: FamilySeed = {
   family: familyRecord('fam-mangukiya', 'Mangukiya Family', 'عائلة مانغوكيا', '#c2410c', {
     surname: 'Mangukiya',
     nativePlace: 'Surat, Gujarat',
-    description: 'A Gujarati family: five generations from Haribhai Mangukiya of Surat, Gujarat, India.',
+    description: 'A Gujarati family: six generations of the Mangukiyas of Surat, Gujarat, India.',
   }),
   people: [
+    // Haribhai's parents are placeholders so that he and Valabhai show as brothers; their real names are still to come.
+    G('mg-devji', 'Devjibhai', 'ديفجي باي', 'M', 1895, 1960, 'mangukiya'),
+    G('mg-rali', 'Raliben', 'رالي بين', 'F', 1899, 1968, 'mangukiya'),
     G('mg-hari', 'Haribhai', 'هاري باي', 'M', 1920, 1998, 'mangukiya', { occupation: 'Farmer' }),
+    G('mg-vala', 'Valabhai', 'فالا باي', 'M', 1923, 2002, 'mangukiya'),
     G('mg-manji', 'Manjibhai', 'مانجي باي', 'M', 1942, null, 'mangukiya'),
     G('mg-ketan', 'Ketanbhai', 'كيتان باي', 'M', 1946, null, 'mangukiya'),
     G('mg-limba', 'Limbabhai', 'ليمبا باي', 'M', 1963, null, 'mangukiya'),
@@ -533,6 +554,8 @@ const MANGUKIYA: FamilySeed = {
     G('mg-ekta', 'Ekta', 'إكتا', 'F', 2002, null, 'mandani'),
   ],
   marriedIn: [
+    // Placeholder wife; her own family's name is not known yet, so she keeps the family surname.
+    'mg-rali',
     'mg-uji',
     'mg-kashi',
     'mg-kokila',
@@ -553,6 +576,7 @@ const MANGUKIYA: FamilySeed = {
     'mg-ekta',
   ],
   unions: [
+    { a: 'mg-devji', b: 'mg-rali', year: 1918, kids: ['mg-hari', 'mg-vala'] },
     { a: 'mg-hari', b: 'mg-uji', year: 1940, kids: ['mg-manji', 'mg-ketan'] },
     { a: 'mg-manji', b: 'mg-kashi', year: 1962, kids: ['mg-limba', 'mg-jeram', 'mg-jitu', 'mg-bhavu'] },
     { a: 'mg-limba', b: 'mg-vasan', year: 1985, kids: ['mg-nilesh', 'mg-bharat', 'mg-jemish'] },

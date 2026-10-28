@@ -1,69 +1,45 @@
-import { Button, cn } from '@family-tree/ui';
+import { Button, cn, focusRingInset } from '@family-tree/ui';
 import { useNavigate } from '@tanstack/react-router';
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-  BookOpen,
-  Box,
-  Building2,
-  Crosshair,
-  Dna,
-  Droplets,
-  Expand,
-  Hourglass,
-  Lamp,
-  Layers3,
-  Mountain,
-  Move,
-  Orbit,
-  Pause,
-  Play,
-  Rotate3d,
-  Scan,
-  Shrink,
-  Sparkles,
-  Sprout,
-  TrainFront,
-  TreeDeciduous,
-  TreePalm,
-  Trees,
-  Waves,
-  X,
-} from 'lucide-react';
-import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Box, X } from 'lucide-react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TreeViewProps } from '#/entities/tree/types.ts';
 import { personName, personYears } from '#/lib/display.ts';
 import { isDark, usePrefs } from '#/lib/prefs.ts';
-import { type GlSupport, probeWebGL, Studio, type StudioState, type StudioText } from './engine.ts';
+import {
+  type GlSupport,
+  type LabelMode,
+  probeWebGL,
+  Studio,
+  type StudioState,
+  type StudioText,
+  type ViewPreset,
+} from './engine.ts';
 import { buildModel, type StudioModel } from './model.ts';
 import { NOW } from './palette.ts';
 import { SCENES, type SceneKey } from './scenes/types.ts';
+import { CameraBar, type StageMenu } from './ui/CameraBar.tsx';
+import { isTyping, stageCommand } from './ui/keys.ts';
+import { useStageLayout } from './ui/layout.ts';
+import { readFlag, writeFlag } from './ui/parts.tsx';
+import { SceneRail } from './ui/SceneRail.tsx';
+import { Timeline } from './ui/Timeline.tsx';
 
 // The 3D studio view: the accepted three.js prototype (docs/prototypes/tree-3d-studio.html)
 // mounted into the tree route. The engine is plain three.js (engine.ts and scenes/); this
-// component owns the glass UI around it (scene rail, timeline) and the WebGL fallback.
-
-const SCENE_ICONS: Record<SceneKey, ComponentType<{ className?: string }>> = {
-  tree: TreeDeciduous,
-  bonsai: Sprout,
-  helix: Dna,
-  lantern: Lamp,
-  metro: TrainFront,
-  paper: BookOpen,
-  terrain: Mountain,
-  banyan: Trees,
-  delta: Droplets,
-  palm: TreePalm,
-  galaxy: Orbit,
-  river: Waves,
-  hour: Hourglass,
-  city: Building2,
-  mandala: Sparkles,
-  sky: Sparkles,
-  glass: Layers3,
-};
+// component owns the glass UI around it (camera bar, scene rail, timeline, in ui/), the
+// keyboard shortcuts and the WebGL fallback.
 
 const SCENE_KEY = 'ft:studio:scene';
+const RAIL_KEY = 'ft:studio:rail';
+const DETAILS_KEY = 'ft:studio:details';
+/** One press of zoom in moves the camera to this share of its distance; zoom out undoes it. */
+const ZOOM_STEP = 0.8;
+/** Below this stage width the person panel covers the whole stage (22rem plus insets and a control). */
+const PANEL_COVERS = 448;
+/** Below this width a rail column and the person panel cannot stand side by side. */
+const PANEL_MEETS_COLUMN = 616;
 
 function savedScene(): SceneKey {
   try {
@@ -117,6 +93,7 @@ export function Studio3D({ graph, selectedId, onSelect, year }: TreeViewProps) {
   const { t, i18n } = useTranslation('studio');
   const lang = i18n.language;
   const dark = useDark();
+  const setTheme = usePrefs((s) => s.setTheme);
   const reduced = useReducedMotion();
   const navigate = useNavigate();
   const model = useStudioModel(graph);
@@ -126,6 +103,9 @@ export function Studio3D({ graph, selectedId, onSelect, year }: TreeViewProps) {
   const [forced, setForced] = useState(false);
   const canRun = support === 'ok' || (support === 'weak' && forced);
   const [slowHidden, setSlowHidden] = useState(false);
+  const [railOpen, setRailOpen] = useState(() => readFlag(RAIL_KEY, true));
+  const [details, setDetails] = useState(() => readFlag(DETAILS_KEY, false));
+  const [menu, setMenu] = useState<StageMenu | null>(null);
   const [state, setState] = useState<StudioState>(() => ({
     scene: savedScene(),
     year: year ?? NOW,
@@ -137,12 +117,28 @@ export function Studio3D({ graph, selectedId, onSelect, year }: TreeViewProps) {
     fps: 60,
     calls: 0,
     weak: false,
+    // The engine reports these once it runs.
+    zoom: 0.5,
+    labels: 'all',
+    rail: true,
   }));
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLElement>(null);
+  const barRef = useRef<HTMLFieldSetElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const hintId = useId();
+  const [full, setFull] = useState(false);
+  const stage = useStageLayout(wrapRef, barRef, full, canRun && hasModel, lang);
   const engineRef = useRef<Studio | null>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const selectedRef = useRef(selectedId);
+  selectedRef.current = selectedId;
+  const menuRef = useRef(menu);
+  menuRef.current = menu;
+  // On narrow stages the person panel hides the camera bar, and its panels with it.
+  const barCovered = selectedId !== null && stage.w < PANEL_COVERS;
+  const barCoveredRef = useRef(barCovered);
+  barCoveredRef.current = barCovered;
 
   const text = useMemo<StudioText>(
     () => ({
@@ -153,38 +149,68 @@ export function Studio3D({ graph, selectedId, onSelect, year }: TreeViewProps) {
     [lang, t],
   );
   // Values the engine is created with; later changes go through its setters.
-  const latest = useRef({ model, minYear, lang, dark, text, selectedId, year: state.year, scene: state.scene });
-  latest.current = { model, minYear, lang, dark, text, selectedId, year: state.year, scene: state.scene };
+  const current = {
+    model,
+    minYear,
+    lang,
+    dark,
+    text,
+    selectedId,
+    year: state.year,
+    scene: state.scene,
+    labels: state.labels,
+    rail: railOpen,
+  };
+  const latest = useRef(current);
+  latest.current = current;
 
   // The engine (renderer, WebGL context) lives as long as the stage is shown; data changes
   // are loaded into it in place below.
   useEffect(() => {
     const host = stageRef.current;
     const l = latest.current;
-    if (!host || !hasModel || !l.model || !canRun) return;
-    let engine: Studio;
-    try {
-      engine = new Studio({
+    const first = l.model;
+    if (!host || !hasModel || !first || !canRun) return;
+    const start = (scene: SceneKey) =>
+      new Studio({
         container: host,
-        model: l.model,
+        model: first,
         lang: l.lang,
         dark: l.dark,
         year: l.year,
         minYear: l.minYear,
-        scene: l.scene,
+        scene,
         selectedId: l.selectedId,
         reduced,
         text: l.text,
         onSelect: (id) => onSelectRef.current(id),
         onState: (patch) => setState((s) => ({ ...s, ...patch })),
       });
-    } catch {
-      setSupport('none');
-      return;
+    let engine: Studio;
+    try {
+      engine = start(l.scene);
+    } catch (e) {
+      // A scene that fails to build should not read as "no WebGL": log it and retry on the default scene.
+      console.error('3D studio failed to start', e);
+      try {
+        if (l.scene === 'tree') throw e;
+        engine = start('tree');
+      } catch {
+        setSupport('none');
+        return;
+      }
     }
     engineRef.current = engine;
-    // A new engine starts with drag-to-turn, so the Move button must too.
-    setState((s) => (s.pan ? { ...s, pan: false } : s));
+    // A new engine starts with its own defaults, so the toggles must too.
+    setState((s) =>
+      s.pan || s.playing || !s.follow || s.spin === reduced
+        ? { ...s, pan: false, playing: false, follow: true, spin: !reduced }
+        : s,
+    );
+    // ...and the viewer's own choices carry over.
+    engine.setLabels(l.labels);
+    // The engine re-frames by itself when the free area changes (a folded rail included).
+    engine.setRail(l.rail);
     return () => {
       engine.dispose();
       engineRef.current = null;
@@ -205,8 +231,58 @@ export function Studio3D({ graph, selectedId, onSelect, year }: TreeViewProps) {
     engineRef.current?.setYear(year ?? NOW);
   }, [year]);
   useEffect(() => saveScene(state.scene), [state.scene]);
+  useEffect(() => {
+    writeFlag(RAIL_KEY, railOpen);
+    engineRef.current?.setRail(railOpen);
+  }, [railOpen]);
+  useEffect(() => writeFlag(DETAILS_KEY, details), [details]);
 
-  const [full, setFull] = useState(false);
+  const cam = useMemo(
+    () => ({
+      step: (dir: 1 | -1) => engineRef.current?.zoomBy(dir > 0 ? ZOOM_STEP : 1 / ZOOM_STEP),
+      zoom: (z: number) => {
+        // Move the slider at once; the engine confirms the value on its next report.
+        setState((s) => ({ ...s, zoom: z }));
+        engineRef.current?.setZoom(z);
+      },
+      fitAll: () => engineRef.current?.frameAll(),
+      frame: () => engineRef.current?.frameSelection(),
+      view: (v: ViewPreset) => engineRef.current?.setView(v),
+      labels: (m: LabelMode) => engineRef.current?.setLabels(m),
+    }),
+    [],
+  );
+
+  // Keyboard shortcuts (listed in the help panel). They act while focus is on the stage or one of
+  // its controls, or nowhere at all (the studio fills the page), and never while typing.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const wrap = wrapRef.current;
+      if (!wrap || !engineRef.current || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target instanceof Element ? e.target : null;
+      if (target && target !== document.body && !wrap.contains(target)) return;
+      if (isTyping(target)) return;
+      const cmd = stageCommand(e);
+      // Holding + or − keeps zooming; any other key acts once per press.
+      if (!cmd || (e.repeat && cmd.kind !== 'zoom')) return;
+      if (cmd.kind === 'clear') {
+        if (menuRef.current) setMenu(null);
+        else if (selectedRef.current) onSelectRef.current(null);
+        else return;
+      } else if (cmd.kind === 'help') {
+        // The help panel lives in the camera bar: no opening it while the bar is hidden.
+        if (barCoveredRef.current) return;
+        setMenu((m) => (m === 'help' ? null : 'help'));
+      } else if (cmd.kind === 'zoom') cam.step(cmd.dir);
+      else if (cmd.kind === 'fitAll') cam.fitAll();
+      else if (cmd.kind === 'frame') cam.frame();
+      else cam.view(cmd.view);
+      e.preventDefault();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [cam]);
+
   useEffect(() => {
     const on = () => setFull(document.fullscreenElement === wrapRef.current);
     document.addEventListener('fullscreenchange', on);
@@ -260,10 +336,56 @@ export function Studio3D({ graph, selectedId, onSelect, year }: TreeViewProps) {
   }
 
   return (
-    <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-background">
+    // A size container: the controls follow the stage's width (@3xl: variants) and height (cqh units),
+    // not the window's. Focusable, so clicking the stage gives the keyboard shortcuts a home.
+    <section
+      ref={wrapRef}
+      aria-label={t('stage')}
+      aria-describedby={hintId}
+      tabIndex={-1}
+      className={cn('relative h-full w-full overflow-hidden bg-background [container-type:size]', focusRingInset)}
+    >
+      <p id={hintId} className="sr-only">
+        {t('stageHint')}
+      </p>
       <div ref={stageRef} className="absolute inset-0" />
 
-      <SceneRail model={model} state={state} onPick={pickScene} />
+      <CameraBar
+        barRef={barRef}
+        stageRef={wrapRef}
+        top={stage.top}
+        popMax={stage.popMax}
+        zoom={state.zoom}
+        labels={state.labels}
+        pan={state.pan}
+        selected={selectedId !== null}
+        covered={barCovered}
+        reduced={reduced}
+        menu={menu}
+        onMenu={setMenu}
+        onZoomStep={cam.step}
+        onZoom={cam.zoom}
+        onFitAll={cam.fitAll}
+        onFrame={cam.frame}
+        onView={cam.view}
+        onLabels={cam.labels}
+      />
+
+      <SceneRail
+        model={model}
+        state={state}
+        open={railOpen}
+        details={details}
+        reduced={reduced}
+        layout={stage.rail}
+        maxHeight={stage.railMax}
+        covered={
+          selectedId !== null && (stage.w < PANEL_COVERS || (stage.rail === 'column' && stage.w < PANEL_MEETS_COLUMN))
+        }
+        onOpen={setRailOpen}
+        onDetails={setDetails}
+        onPick={pickScene}
+      />
 
       <Timeline
         model={model}
@@ -279,17 +401,21 @@ export function Studio3D({ graph, selectedId, onSelect, year }: TreeViewProps) {
         onFollow={() => engineRef.current?.setFollow(!state.follow)}
         onSpin={() => engineRef.current?.setSpin(!state.spin)}
         onPan={() => engineRef.current?.setPan(!state.pan)}
-        onFit={() => engineRef.current?.fit()}
+        onTheme={() => setTheme(dark ? 'light' : 'dark')}
         onFull={toggleFull}
       />
 
       <AnimatePresence>
         {state.weak && !slowHidden && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={reduced ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            className="glass absolute inset-x-3 bottom-[5.5rem] z-20 mx-auto flex max-w-lg items-center gap-3 rounded-2xl p-3 text-sm shadow-lg"
+            exit={{ opacity: 0, y: reduced ? 0 : 8 }}
+            className={cn(
+              'glass absolute inset-x-3 z-20 mx-auto flex max-w-lg items-center gap-3 rounded-2xl p-3 text-sm shadow-lg',
+              // Above the scene strip when it is open there.
+              stage.rail === 'strip' && railOpen ? 'bottom-[8.75rem]' : 'bottom-[5.5rem]',
+            )}
             role="status"
           >
             <p className="min-w-0 flex-1">{t('slow')}</p>
@@ -308,257 +434,6 @@ export function Studio3D({ graph, selectedId, onSelect, year }: TreeViewProps) {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </section>
   );
-}
-
-function SceneRail({
-  model,
-  state,
-  onPick,
-}: {
-  model: StudioModel;
-  state: StudioState;
-  onPick: (k: SceneKey) => void;
-}) {
-  const { t } = useTranslation('studio');
-  const alive = useMemo(
-    () => model.people.filter((p) => p.born <= state.year && !(p.died != null && p.died <= state.year)).length,
-    [model, state.year],
-  );
-  return (
-    // Bottom-start, above the timeline: clear of the route toolbar (top) and the person panel (end side).
-    <div className="pointer-events-none absolute inset-x-3 bottom-[4.75rem] z-10 flex md:inset-x-auto md:start-3">
-      <div className="glass pointer-events-auto flex max-w-full flex-col gap-1 rounded-2xl p-1.5 shadow-lg md:w-56">
-        <nav
-          aria-label={t('scenesLabel')}
-          className="flex gap-0.5 overflow-x-auto [scrollbar-width:none] md:max-h-[max(9rem,min(23rem,calc(100vh-24rem)))] md:flex-col md:overflow-y-auto md:overflow-x-hidden md:pb-6 md:[mask-image:linear-gradient(to_bottom,black_calc(100%-2.5rem),transparent)] md:[scrollbar-width:thin]"
-        >
-          {SCENES.map((key) => {
-            const Icon = SCENE_ICONS[key];
-            const on = state.scene === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                aria-pressed={on}
-                title={on && key === 'hour' ? t('hourBack') : t(`scenes.${key}.desc`)}
-                onClick={() => onPick(key)}
-                className={cn(
-                  'group flex shrink-0 items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-start transition-colors',
-                  on ? 'bg-primary text-primary-foreground shadow' : 'text-foreground hover:bg-accent',
-                )}
-              >
-                <Icon className={cn('size-4 shrink-0', on ? 'opacity-100' : 'text-primary')} aria-hidden />
-                <span className="grid min-w-0 leading-tight">
-                  <span className="truncate text-sm font-semibold">{t(`scenes.${key}.name`)}</span>
-                  <small
-                    className={cn(
-                      'hidden truncate text-[11px] md:block [@media(max-height:760px)]:hidden',
-                      on ? 'text-primary-foreground/80' : 'text-muted-foreground',
-                    )}
-                  >
-                    {t(`scenes.${key}.desc`)}
-                  </small>
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-        <div className="hidden gap-0.5 border-t border-border px-2.5 pt-1.5 pb-0.5 text-[11.5px] text-muted-foreground tabular-nums md:grid">
-          <div>
-            <b className="font-semibold text-foreground">{t('alive', { count: alive, year: state.year })}</b>
-          </div>
-          <div>
-            <b className="font-medium text-foreground">{state.fps}</b> {t('hud.fps')} ·{' '}
-            <span className="rounded bg-accent px-1.5 text-accent-foreground">
-              {t('hud.quality')}: {t(`hud.q${state.quality}`)}
-            </span>
-          </div>
-          <div>
-            <b className="font-medium text-foreground">{model.n}</b> {t('hud.people')} ·{' '}
-            <b className="font-medium text-foreground">{state.calls}</b> {t('hud.draws')}
-          </div>
-          <div className="flex flex-wrap gap-x-3">
-            <span className="inline-flex items-center gap-1.5">
-              <i className="inline-block size-2 rounded-sm bg-primary" aria-hidden />
-              {t('births')}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <i className="inline-block size-2 rounded-sm bg-muted-foreground/60" aria-hidden />
-              {t('deaths')}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface TimelineProps {
-  model: StudioModel;
-  min: number;
-  state: StudioState;
-  dark: boolean;
-  full: boolean;
-  onYear(y: number): void;
-  onPlay(): void;
-  onFollow(): void;
-  onSpin(): void;
-  onPan(): void;
-  onFit(): void;
-  onFull(): void;
-}
-
-function Timeline({
-  model,
-  min,
-  state,
-  dark,
-  full,
-  onYear,
-  onPlay,
-  onFollow,
-  onSpin,
-  onPan,
-  onFit,
-  onFull,
-}: TimelineProps) {
-  const { t } = useTranslation('studio');
-  const tool = (on: boolean | undefined) =>
-    cn('size-9 shrink-0 rounded-full', on ? 'bg-accent text-primary' : 'text-muted-foreground hover:text-foreground');
-  return (
-    <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
-      <section
-        aria-label={t('timeline')}
-        className="glass pointer-events-auto flex items-center gap-2 rounded-2xl px-2 py-1.5 shadow-lg sm:gap-3 sm:px-3"
-      >
-        <Button
-          size="icon"
-          className="size-10 shrink-0 rounded-full shadow"
-          onClick={onPlay}
-          aria-label={state.playing ? t('pause') : t('play')}
-          title={state.playing ? t('pause') : t('play')}
-        >
-          {state.playing ? <Pause className="size-4" /> : <Play className="size-4 rtl:-scale-x-100" />}
-        </Button>
-        <div className="grid min-w-0 flex-1 gap-0.5">
-          <History model={model} min={min} dark={dark} />
-          <input
-            type="range"
-            min={min}
-            max={NOW}
-            step={1}
-            value={state.year}
-            onChange={(e) => onYear(Number(e.target.value))}
-            aria-label={t('year')}
-            className="h-1.5 w-full cursor-pointer accent-[var(--ft-primary)]"
-          />
-        </div>
-        <output className="ltr-isolate w-[4.2ch] shrink-0 text-center font-semibold text-xl tabular-nums sm:text-2xl">
-          {state.year}
-        </output>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <Button
-            size="icon"
-            variant="ghost"
-            className={cn(tool(state.follow), 'hidden sm:inline-flex')}
-            aria-pressed={state.follow}
-            aria-label={t('follow')}
-            title={t('follow')}
-            onClick={onFollow}
-          >
-            <Crosshair className="size-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className={tool(state.spin)}
-            aria-pressed={state.spin}
-            aria-label={t('spin')}
-            title={t('spin')}
-            onClick={onSpin}
-          >
-            <Rotate3d className="size-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className={tool(state.pan)}
-            aria-pressed={state.pan}
-            aria-label={t('pan')}
-            title={t('pan')}
-            onClick={onPan}
-          >
-            <Move className="size-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className={tool(false)}
-            aria-label={t('fit')}
-            title={t('fit')}
-            onClick={onFit}
-          >
-            <Scan className="size-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className={cn(tool(full), 'hidden sm:inline-flex')}
-            aria-label={full ? t('exitFullscreen') : t('fullscreen')}
-            title={full ? t('exitFullscreen') : t('fullscreen')}
-            onClick={onFull}
-          >
-            {full ? <Shrink className="size-4" /> : <Expand className="size-4" />}
-          </Button>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-/** Births (up) and deaths (down) per year above the slider. Mirrored in Arabic like the range input. */
-function History({ model, min, dark }: { model: StudioModel; min: number; dark: boolean }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const c = ref.current;
-    if (!c) return;
-    const draw = () => {
-      const r = c.getBoundingClientRect();
-      if (!r.width) return;
-      const dpr = Math.min(devicePixelRatio, 2);
-      c.width = Math.round(r.width * dpr);
-      c.height = Math.round(r.height * dpr);
-      const g = c.getContext('2d');
-      if (!g) return;
-      g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const nb = NOW - min + 1;
-      const b = new Array<number>(nb).fill(0);
-      const d = new Array<number>(nb).fill(0);
-      for (const p of model.people) {
-        if (p.born >= min && p.born <= NOW) b[p.born - min] = (b[p.born - min] ?? 0) + 1;
-        if (p.died != null && p.died >= min && p.died <= NOW) d[p.died - min] = (d[p.died - min] ?? 0) + 1;
-      }
-      const mx = Math.max(1, ...b, ...d);
-      const cs = getComputedStyle(document.documentElement);
-      const bw = r.width / nb;
-      g.clearRect(0, 0, r.width, r.height);
-      for (let i = 0; i < nb; i++) {
-        const hb = ((b[i] ?? 0) / mx) * (r.height * 0.62);
-        const hd = ((d[i] ?? 0) / mx) * (r.height * 0.32);
-        g.fillStyle = cs.getPropertyValue('--ft-primary').trim() || (dark ? '#4fd1bd' : '#0f6b63');
-        g.fillRect(i * bw, r.height * 0.66 - hb, Math.max(1, bw - 0.6), hb);
-        g.fillStyle = cs.getPropertyValue('--ft-muted-foreground').trim() || (dark ? '#9fb0ac' : '#5d6664');
-        g.globalAlpha = 0.6;
-        g.fillRect(i * bw, r.height * 0.7, Math.max(1, bw - 0.6), hd);
-        g.globalAlpha = 1;
-      }
-    };
-    draw();
-    const ro = new ResizeObserver(draw);
-    ro.observe(c);
-    return () => ro.disconnect();
-  }, [model, min, dark]);
-  return <canvas ref={ref} aria-hidden className="block h-6 w-full rtl:-scale-x-100" />;
 }
